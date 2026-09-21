@@ -6684,7 +6684,6 @@ async function closeContinuationDockWithConfirmation(){
     ? 'Close this voice draft? The draft and any unsent recording will be discarded.'
     : 'Close this Add On recording panel? Any unsent recording will be discarded.';
   if (!window.confirm(firstMessage)) return;
-  if (!window.confirm('Please confirm again to close.')) return;
   stopVoiceTimer();
   stopMediaTracks();
   pendingNewVoiceDockId = isNewDraft ? null : pendingNewVoiceDockId;
