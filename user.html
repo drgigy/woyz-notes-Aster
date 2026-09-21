@@ -2622,7 +2622,7 @@ const GEMINI_PROMPTS = {
   'Review dictation':`You are an expert medical transcription assistant. The doctor states the patient name, age, and UHID at the beginning; extract these identifiers into their JSON fields and do not repeat that opening identification in the text unless clinically necessary. Convert the remaining Malayalam, English, or Kerala Manglish dictation into complete professional clinical English suitable for a review note. Preserve every clearly dictated clinical fact, chronology, medicine, dose, route, frequency, duration, investigation, numeric value, unit, examination finding, assessment, advice, instruction, referral, and follow-up exactly as dictated. Do not summarize, shorten, condense, compress, omit, merge unrelated facts, or remove repeated clinically relevant details. Translate Malayalam clinical content and transliterate names into English. Correct grammar and punctuation, but never invent, infer, recommend, add, or remove information. If investigations are dictated, use the exact heading "Review of Investigations:" and format each investigation/report as a numbered item, with each report starting on a new line. If an investigation has multiple findings, put each finding on its own unnumbered line below that report. If blood investigations are dictated, group all blood tests from the same date under one numbered item and list each blood value below it on its own unnumbered line, adding standard conventional units when absent. If existing/background medicines are dictated, use the exact heading "Current Medications:" and number only those current medicines. If the doctor explicitly dictates a prescription/Rx section, start a separate exact heading "Prescription:" and number only prescription medicines from 1 again. Never continue numbering from Current Medications into Prescription, Advice, Instructions, or Follow-up. If advice, instructions, consultation notes, or treatment changes are dictated, keep them under the dictated heading or a suitable clinical heading and number them separately from Prescription. Return only the requested JSON object.`,
   'Reply letter':`You are a clinical reply letter drafting assistant. The doctor states the patient name, age, and UHID at the beginning; extract these identifiers into their JSON fields and exclude the opening identification from the letter unless it belongs naturally in the clinical content. Create a clean reply letter from only the dictated audio. Correct spelling and grammar and make sentences complete. Do not add, infer, assume, hallucinate, recommend, or remove any clinical information. Use a polite professional letter style and keep the original meaning exactly. The text must begin exactly with "To," followed by the dictated recipient name, credentials, department, hospital, or address, each on its own line when dictated. Leave one blank line before the main paragraphs. Do not use a salutation or a Reply Letter heading. End with "Thank you" one blank line below the final paragraph. Do not include sender credentials, signature, or footer. If a detail is not dictated, omit it; do not write placeholders or "Not dictated". Return only the requested JSON object.`,
   'Medical certificate':`You are an expert medical certificate drafting assistant. The doctor states the patient name, age, and UHID at the beginning; extract them exactly into their JSON fields. Create a clean medical certificate from only the dictated audio. Correct spelling and grammar and make sentences complete. Do not add, infer, assume, hallucinate, recommend, or remove any clinical or administrative information. Use a simple certificate style. Use today's date only when no date is dictated. The certificateBody must begin with "This is to certify that" and contain one or more clear paragraphs. Include patient details only if dictated or provided in the JSON patient fields. If dates, rest period, diagnosis, fitness, restrictions, or purpose are dictated, include them exactly. If a detail is not dictated, omit it; do not write placeholders or "Not dictated". Do not include "To whomsoever it may concern", "Thank you", doctor credentials, or a signature in certificateBody. Return only the requested JSON object.`,
-  'Discharge summary':`You are an emergency medicine discharge summary drafting assistant. Create a discharge summary in the Aster Emergency Medicine format from only the clearly dictated audio. The doctor states the patient name, age, and UHID at the beginning; extract those identifiers exactly into JSON fields. The output text must be plain editable text, not markdown. Use this exact heading order and labels: Discharge Summary; Name; Age/Gender; UHID; IP No.; Address; Consultant; DOA; DOD; DIAGNOSIS; PROCEDURE DONE; DRUG ALLERGY; HISTORY; CLINICAL EXAMINATION; INVESTIGATIONS; LAB; RADIOLOGY; PROCEDURE / OPERATION NOTES; OTHERS; GENERAL INSTRUCTIONS; REASON FOR ADMISSION; COURSE IN HOSPITAL; MEDICATIONS ADMINISTERED; CONDITION AT DISCHARGE; ADVICE ON DISCHARGE. Preserve every clearly dictated clinical fact, chronology, investigation, value, procedure, consultation note, medicine, dose, route, frequency, duration, discharge condition, and advice exactly in meaning. In CLINICAL EXAMINATION, preserve emergency assessment details such as airway, breathing, circulation, disability, exposure, secondary survey, local examination, GCS, vitals, and system findings when spoken. Do not add, infer, assume, recommend, hallucinate, or remove any clinical information. Use NIL for unsupported sections. Return only the requested JSON object.`
+  'Discharge summary':`You are an emergency medicine discharge summary drafting assistant. Use the uploaded ED discharge summary PDF as the structural reference, but create only the copy-paste body text for the hospital discharge page from the clearly dictated audio. The doctor states the patient name, age, and UHID at the beginning; extract those identifiers exactly into JSON fields. The output text must be plain editable text, not markdown. Do not include "Discharge Summary", hospital headers, Aster heading, title blocks, doctor lists, logo text, department heading, prepared-by details, contact footer, signature, or printout formatting. Use this exact heading order and labels: Name; Age/Gender; UHID; IP No.; Address; Consultant; DOA; DOD; DIAGNOSIS; PROCEDURE DONE; DRUG ALLERGY; HISTORY; CLINICAL EXAMINATION; INVESTIGATIONS; LAB; RADIOLOGY; PROCEDURE / OPERATION NOTES; OTHERS; GENERAL INSTRUCTIONS; REASON FOR ADMISSION; COURSE IN HOSPITAL; MEDICATIONS ADMINISTERED; CONDITION AT DISCHARGE; ADVICE ON DISCHARGE; MEDICATIONS; HOME MEDICATIONS; DIET ADVICE; FOLLOW UP DATE; REVIEW; WHEN TO OBTAIN URGENT CARE. Put every heading on its own line with a colon, then put content below it. Leave one blank line between sections. Never place multiple headings in the same paragraph. Keep the PDF-style clinical layout: in CLINICAL EXAMINATION, write Airway, Breathing, Circulation, Disability, Exposure, Secondary survey, C SPINE, CCT, PCT, LOG roll, EFAST, Head, Face, Eyes, Oral cavity, Ear, Nose, Chest, Abdomen, Musculoskeletal System, Right upper limb, Right lower limb, and Local examination on separate lines when spoken. Keep injury lists and medication lists as one item per line. Preserve every clearly dictated clinical fact, chronology, investigation, value, procedure, consultation note, medicine, dose, route, frequency, duration, discharge condition, and advice exactly in meaning. Do not add, infer, assume, recommend, hallucinate, or remove any clinical information. Use NIL for unsupported sections. Return only the requested JSON object.`
 };
 GEMINI_PROMPTS.ambient += ' For this app, do not generate a Prescription, Rx, or drug dispensing section. Newly advised medicines and investigations must stay under Treatment Plan only.';
 
@@ -2752,9 +2752,7 @@ NIL`;
 
 const OP_VOICE_NOTE_TEMPLATE = VOICE_NOTE_TEMPLATE;
 
-const DISCHARGE_SUMMARY_TEMPLATE = `Discharge Summary
-
-Name: NIL
+const DISCHARGE_SUMMARY_TEMPLATE = `Name: NIL
 Age/Gender: NIL
 UHID: NIL
 IP No.: NIL
@@ -2809,6 +2807,24 @@ CONDITION AT DISCHARGE:
 NIL
 
 ADVICE ON DISCHARGE:
+NIL
+
+MEDICATIONS:
+NIL
+
+HOME MEDICATIONS:
+NIL
+
+DIET ADVICE:
+NIL
+
+FOLLOW UP DATE:
+NIL
+
+REVIEW:
+NIL
+
+WHEN TO OBTAIN URGENT CARE:
 NIL`;
 
 const MEDICAL_CERTIFICATE_TEMPLATE = `Patient Name: NIL
@@ -4626,7 +4642,14 @@ const DISCHARGE_SUMMARY_HEADINGS = [
   'DIAGNOSIS','PROCEDURE DONE','DRUG ALLERGY','HISTORY','CLINICAL EXAMINATION',
   'INVESTIGATIONS','LAB','RADIOLOGY','PROCEDURE / OPERATION NOTES','PROCEDURE/OPERATION NOTES',
   'OTHERS','GENERAL INSTRUCTIONS','REASON FOR ADMISSION','COURSE IN HOSPITAL',
-  'MEDICATIONS ADMINISTERED','CONDITION AT DISCHARGE','ADVICE ON DISCHARGE'
+  'MEDICATIONS ADMINISTERED','CONDITION AT DISCHARGE','ADVICE ON DISCHARGE',
+  'MEDICATIONS','HOME MEDICATIONS','DIET ADVICE','FOLLOW UP DATE','REVIEW','WHEN TO OBTAIN URGENT CARE'
+];
+const DISCHARGE_INLINE_LABELS = [
+  'Airway','Breathing','Circulation','Disability','Exposure','Secondary survey','Secondary Survey',
+  'C SPINE','C-SPINE','CCT','C-CT','PCT','P-CT','LOG roll','EFAST','E-FAST',
+  'Head','Face','Eyes','Oral Cavity','Oral cavity','Ear','Nose','Chest','Abdomen',
+  'Musculoskeletal System','Right upper limb','Right lower limb','Local examination'
 ];
 
 function isDischargeSummaryMode(record){
@@ -4638,20 +4661,43 @@ function formatDischargeSummaryText(text){
   let normalized = String(text || '').replace(/\r\n/g, '\n').trim();
   if (!normalized) return '';
   normalized = normalized.replace(/^Discharge Summary\s+(?=Name\s*:)/i, 'Discharge Summary\n\n');
+  normalized = normalized.replace(/(^|\s+)Discharge Summary\s+(?=(?:Name|Age\/Gender|UHID|IP No\.?|Address|Consultant|DOA|DOD|DIAGNOSIS)\s*:)/gi, '\n\nDischarge Summary\n\n');
+  const headingTokens = [];
   DISCHARGE_SUMMARY_HEADINGS
     .sort((a,b) => b.length - a.length)
     .forEach(label => {
       const canonical = label === 'IP No' ? 'IP No.' : label === 'PROCEDURE/OPERATION NOTES' ? 'PROCEDURE / OPERATION NOTES' : label;
-      normalized = normalized.replace(new RegExp(`(^|\\s+)(${escapeRegExp(label)}):\\s*`, 'gi'), (match, leading) => {
+      const token = `__DS_HEADING_${headingTokens.length}__`;
+      headingTokens.push([token, canonical]);
+      normalized = normalized.replace(new RegExp(`(^|\\s+)(${escapeRegExp(label)})\\s*:\\s*`, 'gi'), (match, leading) => {
         const prefix = leading && leading.includes('\n') ? '\n\n' : '\n\n';
-        return `${prefix}${canonical}:\n`;
+        return `${prefix}${token}:\n`;
+      });
+    });
+  headingTokens.forEach(([token, canonical]) => {
+    normalized = normalized.split(`${token}:`).join(`${canonical}:`);
+  });
+  DISCHARGE_INLINE_LABELS
+    .sort((a,b) => b.length - a.length)
+    .forEach(label => {
+      const canonical = label
+        .replace(/^secondary survey$/i, 'Secondary survey')
+        .replace(/^oral cavity$/i, 'Oral cavity')
+        .replace(/^right upper limb$/i, 'Right upper limb')
+        .replace(/^right lower limb$/i, 'Right lower limb')
+        .replace(/^local examination$/i, 'Local examination');
+      normalized = normalized.replace(new RegExp(`(^|[\\s.])(${escapeRegExp(label)})\\s*[:;-]\\s*`, 'gi'), (match, leading) => {
+        const prefix = leading && leading.trim() === '.' ? '.\n' : '\n';
+        return `${prefix}${canonical}: `;
       });
     });
   normalized = normalized
+    .replace(/\s+(\d+[.)])\s*/g, '\n$1 ')
+    .replace(/^Discharge Summary\s*/i, '')
+    .replace(/(^|\n)\s*Discharge Summary\s*(?=\n|$)/gi, '\n')
     .replace(/^(?:\n\s*)+/, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-  if (!/^Discharge Summary\b/i.test(normalized)) normalized = `Discharge Summary\n\n${normalized}`;
   return normalized;
 }
 
@@ -6624,7 +6670,7 @@ async function sendAudioToGemini(audioBlob, apiKey, selectedMode, onRetry, visit
     'Review dictation':'Transcribe the recording faithfully. Correct only grammar, spelling, and punctuation. Do not add, remove, or infer clinical content.',
     'Reply letter':'Draft a polite professional reply letter using only clearly dictated facts. Begin the letter text with "To," and end with "Thank you". Omit undictated details and do not add, remove, or infer clinical content.',
     'Medical certificate':'Convert only the clearly dictated facts into a simple medical-certificate JSON. certificateBody must begin with "This is to certify that". Omit undictated details and do not add, remove, or infer facts.',
-    'Discharge summary':'Create an Aster Emergency Medicine discharge summary using the exact heading order requested in the system instruction. Preserve dictated ED assessment, investigations, procedure notes, course in hospital, medicines administered, discharge condition, and advice. Use NIL for unsupported sections. Do not add or infer facts.'
+    'Discharge summary':'Create a clean discharge-summary body for copy-paste into the hospital discharge page, following the uploaded ED discharge summary PDF structure. Do not include hospital headers, the title "Discharge Summary", doctor lists, logo text, department heading, prepared-by footer, signature, or printout formatting. Put every heading on its own line with a colon and content below it, with blank lines between sections. Keep clinical examination details and numbered injury/medicine lists on separate lines. Preserve dictated ED assessment, investigations, procedure notes, course in hospital, medicines administered, discharge condition, medications, follow-up, urgent-care advice, and discharge advice. Use NIL for unsupported sections. Do not add or infer facts.'
   };
   const payload = await generateContentWithRetry({
     apiKey,

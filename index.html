@@ -375,7 +375,14 @@ const DISCHARGE_SUMMARY_HEADINGS = [
   'DIAGNOSIS','PROCEDURE DONE','DRUG ALLERGY','HISTORY','CLINICAL EXAMINATION',
   'INVESTIGATIONS','LAB','RADIOLOGY','PROCEDURE / OPERATION NOTES','PROCEDURE/OPERATION NOTES',
   'OTHERS','GENERAL INSTRUCTIONS','REASON FOR ADMISSION','COURSE IN HOSPITAL',
-  'MEDICATIONS ADMINISTERED','CONDITION AT DISCHARGE','ADVICE ON DISCHARGE'
+  'MEDICATIONS ADMINISTERED','CONDITION AT DISCHARGE','ADVICE ON DISCHARGE',
+  'MEDICATIONS','HOME MEDICATIONS','DIET ADVICE','FOLLOW UP DATE','REVIEW','WHEN TO OBTAIN URGENT CARE'
+];
+const DISCHARGE_INLINE_LABELS = [
+  'Airway','Breathing','Circulation','Disability','Exposure','Secondary survey','Secondary Survey',
+  'C SPINE','C-SPINE','CCT','C-CT','PCT','P-CT','LOG roll','EFAST','E-FAST',
+  'Head','Face','Eyes','Oral Cavity','Oral cavity','Ear','Nose','Chest','Abdomen',
+  'Musculoskeletal System','Right upper limb','Right lower limb','Local examination'
 ];
 
 function escapeRegExp(value){
@@ -391,17 +398,40 @@ function formatDischargeSummaryText(text){
   let normalized = String(text || '').replace(/\r\n/g, '\n').trim();
   if (!normalized) return '';
   normalized = normalized.replace(/^Discharge Summary\s+(?=Name\s*:)/i, 'Discharge Summary\n\n');
+  normalized = normalized.replace(/(^|\s+)Discharge Summary\s+(?=(?:Name|Age\/Gender|UHID|IP No\.?|Address|Consultant|DOA|DOD|DIAGNOSIS)\s*:)/gi, '\n\nDischarge Summary\n\n');
+  const headingTokens = [];
   DISCHARGE_SUMMARY_HEADINGS
     .sort((a,b) => b.length - a.length)
     .forEach(label => {
       const canonical = label === 'IP No' ? 'IP No.' : label === 'PROCEDURE/OPERATION NOTES' ? 'PROCEDURE / OPERATION NOTES' : label;
-      normalized = normalized.replace(new RegExp(`(^|\\s+)(${escapeRegExp(label)}):\\s*`, 'gi'), `\n\n${canonical}:\n`);
+      const token = `__DS_HEADING_${headingTokens.length}__`;
+      headingTokens.push([token, canonical]);
+      normalized = normalized.replace(new RegExp(`(^|\\s+)(${escapeRegExp(label)})\\s*:\\s*`, 'gi'), `\n\n${token}:\n`);
+    });
+  headingTokens.forEach(([token, canonical]) => {
+    normalized = normalized.split(`${token}:`).join(`${canonical}:`);
+  });
+  DISCHARGE_INLINE_LABELS
+    .sort((a,b) => b.length - a.length)
+    .forEach(label => {
+      const canonical = label
+        .replace(/^secondary survey$/i, 'Secondary survey')
+        .replace(/^oral cavity$/i, 'Oral cavity')
+        .replace(/^right upper limb$/i, 'Right upper limb')
+        .replace(/^right lower limb$/i, 'Right lower limb')
+        .replace(/^local examination$/i, 'Local examination');
+      normalized = normalized.replace(new RegExp(`(^|[\\s.])(${escapeRegExp(label)})\\s*[:;-]\\s*`, 'gi'), (match, leading) => {
+        const prefix = leading && leading.trim() === '.' ? '.\n' : '\n';
+        return `${prefix}${canonical}: `;
+      });
     });
   normalized = normalized
+    .replace(/\s+(\d+[.)])\s*/g, '\n$1 ')
+    .replace(/^Discharge Summary\s*/i, '')
+    .replace(/(^|\n)\s*Discharge Summary\s*(?=\n|$)/gi, '\n')
     .replace(/^(?:\n\s*)+/, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-  if (!/^Discharge Summary\b/i.test(normalized)) normalized = `Discharge Summary\n\n${normalized}`;
   return normalized;
 }
 
