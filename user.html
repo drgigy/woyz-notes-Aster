@@ -221,16 +221,93 @@
     color:var(--muted);
     font:700 12px/1.35 'Inter',sans-serif;
   }
+  .home-quick-actions{
+    width:min(720px,100%);
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px;
+    margin-top:18px;
+  }
+  .home-quick-btn,
+  .home-tools-btn{
+    min-height:54px;
+    border:1px solid #DDE5E0;
+    border-radius:14px;
+    background:#fff;
+    color:#1E2521;
+    font:900 16px 'Inter',sans-serif;
+    cursor:pointer;
+    box-shadow:0 12px 30px -26px rgba(20,35,29,.55);
+  }
+  .home-quick-btn.primary{
+    background:var(--teal);
+    border-color:var(--teal-deep);
+    color:#fff;
+  }
+  .home-tools-wrap{
+    position:relative;
+    width:100%;
+  }
+  .home-tools-btn{
+    width:100%;
+    min-height:112px;
+    padding:18px;
+    text-align:left;
+  }
+  .home-tools-menu{
+    display:none;
+    position:absolute;
+    z-index:10;
+    left:0;
+    right:0;
+    top:calc(100% + 8px);
+    padding:8px;
+    border:1px solid #DDE5E0;
+    border-radius:12px;
+    background:#fff;
+    box-shadow:0 18px 44px -28px rgba(20,35,29,.55);
+  }
+  .home-tools-menu.open{ display:block; }
+  .home-tool-item{
+    width:100%;
+    min-height:42px;
+    border:0;
+    border-radius:9px;
+    background:#F6F8F6;
+    color:#1E2521;
+    font:900 14px 'Inter',sans-serif;
+    text-align:left;
+    padding:0 12px;
+    cursor:pointer;
+  }
+  .gcs-panel{
+    width:min(720px,100%);
+    display:none;
+    margin-top:16px;
+    padding:14px;
+    border:1px solid #DDE5E0;
+    border-radius:14px;
+    background:#fff;
+  }
+  .gcs-panel.visible{ display:grid; gap:10px; }
+  .gcs-title{ font:900 16px 'Inter',sans-serif; color:#1E2521; }
+  .gcs-row{ display:grid; grid-template-columns:84px 1fr; gap:8px; align-items:center; }
+  .gcs-row label{ font:900 12px 'Inter',sans-serif; color:#68736D; }
+  .gcs-row select{ height:38px; border:1px solid #DDE5E0; border-radius:10px; background:#fff; padding:0 8px; font:800 13px 'Inter',sans-serif; }
+  .gcs-total{ min-height:38px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:var(--teal); color:#fff; font:900 15px 'Inter',sans-serif; }
+  .mobile-sidebar-topbar{
+    display:none;
+  }
   .mobile-list-btn,
   .mobile-home-btn{
     display:none;
-    border:0;
-    border-radius:999px;
+    border:1px solid #DDE2DC;
+    border-radius:10px;
     background:#fff;
-    color:var(--teal);
+    color:#1F5F52;
     font:900 13px 'Inter',sans-serif;
     padding:9px 14px;
-    box-shadow:0 8px 24px -18px rgba(31,95,82,.65);
+    box-shadow:none;
     pointer-events:auto;
     justify-self:start;
   }
@@ -1747,21 +1824,49 @@
       top:0; bottom:0; left:0;
       width:min(86vw,330px);
       min-width:0;
-      padding:72px 14px calc(18px + env(safe-area-inset-bottom));
+      padding:58px 14px calc(18px + env(safe-area-inset-bottom));
       box-shadow:20px 0 60px -34px rgba(0,0,0,.45);
       transform:translateX(-102%);
       transition:transform .2s ease;
       border-right:1px solid var(--border);
     }
     .app.sidebar-open .sidebar{ transform:translateX(0); }
+    .mobile-sidebar-topbar{
+      position:absolute;
+      top:0;
+      left:0;
+      right:0;
+      height:42px;
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      align-items:center;
+      gap:8px;
+      padding:4px 12px;
+      border-bottom:1px solid var(--border);
+      background:rgba(255,255,255,.97);
+      backdrop-filter:blur(12px);
+    }
+    .mobile-sidebar-action{
+      width:100%;
+      height:32px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      background:#fff;
+      color:#565552;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:13px;
+      font-weight:900;
+      cursor:pointer;
+    }
+    .mobile-sidebar-action.primary{
+      background:var(--teal);
+      border-color:var(--teal-deep);
+      color:#fff;
+    }
     .note-action-row{
-      min-height:72px;
-      grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-      gap:10px;
-      margin:0;
-      padding:0;
-      border-bottom:0;
-      background:transparent;
+      display:none;
     }
     .privacy-row{ margin:8px 0 0; }
     .record-title{ font-size:0; }
@@ -1778,7 +1883,7 @@
       pointer-events:none;
     }
     #addNoteBtn{
-      display:flex !important;
+      display:none !important;
     }
     .mobile-doc-actions{ display:none; }
     .mobile-doc-action{
@@ -1836,6 +1941,9 @@
       left:calc(min(86vw,330px) - 60px);
       z-index:90;
     }
+    .app.sidebar-open .settings-btn{
+      display:none;
+    }
     .settings-btn{
       width:44px;height:44px;
       border:0;
@@ -1853,7 +1961,7 @@
       justify-content:space-between;
       gap:6px;
       min-height:52px;
-      padding:6px 6px 6px 10px;
+      padding:6px 150px 6px 10px;
       border-bottom:1px solid var(--border);
       background:#fff;
     }
@@ -1875,26 +1983,28 @@
     .mobile-visit-row .visit-toggle-btn.active{ background:var(--teal); color:#fff; }
     .date-nav{
       position:absolute;
-      right:4px;
+      right:6px;
       bottom:8px;
       margin-left:0;
-      gap:0;
+      gap:3px;
     }
     .date-step{
-      width:26px;
+      width:24px;
       height:32px;
-      border:0;
-      background:transparent;
-      font-size:30px;
+      border:1px solid #DDE2DC;
+      border-radius:8px;
+      background:#fff;
+      font-size:24px;
       color:#575757;
     }
     .date-input{
-      width:122px;
+      width:96px;
       height:32px;
-      border:0;
-      background:transparent;
+      border:1px solid #DDE2DC;
+      border-radius:8px;
+      background:#fff;
       padding:0;
-      font:800 14px 'Inter',sans-serif;
+      font:800 12px 'Inter',sans-serif;
       color:#555;
       text-align:center;
     }
@@ -2092,9 +2202,21 @@
       margin-top:18px;
     }
     .home-template-card{
-      min-height:88px;
+      min-height:64px;
       border-radius:14px;
-      padding:15px 16px;
+      padding:14px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+    }
+    .home-tools-btn{
+      min-height:64px;
+      padding:14px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
     }
     .mobile-action{
       width:100%;height:32px;
@@ -2160,6 +2282,11 @@
 
   <!-- SIDEBAR -->
   <aside class="sidebar">
+    <div class="mobile-sidebar-topbar" aria-label="List actions">
+      <button class="mobile-sidebar-action primary" id="mobileSidebarNewBtn" type="button">+ New</button>
+      <button class="mobile-sidebar-action" id="mobileSidebarSettingsBtn" type="button">Settings</button>
+      <button class="mobile-sidebar-action" id="mobileSidebarBackBtn" type="button">Back</button>
+    </div>
     <div class="note-action-row">
       <button class="record-btn" id="recordBtn">
         <span class="record-dot"></span>
@@ -2669,6 +2796,9 @@ const appShell = document.getElementById('appShell');
 const mobileMenuBtn = document.getElementById('mobileMenuBtn');
 const mobileListBtn = document.getElementById('mobileListBtn');
 const mobileHomeBtn = document.getElementById('mobileHomeBtn');
+const mobileSidebarNewBtn = document.getElementById('mobileSidebarNewBtn');
+const mobileSidebarSettingsBtn = document.getElementById('mobileSidebarSettingsBtn');
+const mobileSidebarBackBtn = document.getElementById('mobileSidebarBackBtn');
 const mobileBackdrop = document.getElementById('mobileBackdrop');
 const mobileCopyBtn = document.getElementById('mobileCopyBtn');
 const mobileDeleteBtn = document.getElementById('mobileDeleteBtn');
@@ -4494,29 +4624,93 @@ function showHomeScreen(){
   renderTimelineMenu();
   mainScroll.innerHTML = `
     <div class="empty-state">
-      <div class="empty-title">Home</div>
-      <div class="empty-sub">Select what you want to create.</div>
+      <div class="empty-title">ER WOYZ</div>
+      <div class="home-quick-actions">
+        <button class="home-quick-btn primary" type="button" id="homeAddNewBtn">Add New</button>
+        <button class="home-quick-btn" type="button" id="homeScanQrBtn">Scan QR</button>
+      </div>
       <div class="home-template-grid">
         <button class="home-template-card" type="button" data-home-template-mode="Discharge summary">
           <span class="home-template-title">Discharge summary</span>
-          <span class="home-template-sub">Emergency discharge document</span>
         </button>
         <button class="home-template-card" type="button" data-home-template-mode="">
           <span class="home-template-title">Visit note</span>
-          <span class="home-template-sub">OP clinical note</span>
         </button>
         <button class="home-template-card" type="button" data-home-template-mode="Reply letter">
           <span class="home-template-title">Reply letter</span>
-          <span class="home-template-sub">Clean professional letter</span>
         </button>
         <button class="home-template-card" type="button" data-home-template-mode="Medical certificate">
           <span class="home-template-title">Medical certificate</span>
-          <span class="home-template-sub">Certificate body for patient</span>
         </button>
+        <div class="home-tools-wrap">
+          <button class="home-tools-btn" type="button" id="homeToolsBtn" aria-haspopup="true" aria-expanded="false">Tools</button>
+          <div class="home-tools-menu" id="homeToolsMenu">
+            <button class="home-tool-item" type="button" id="homeGcsBtn">GCS</button>
+          </div>
+        </div>
+      </div>
+      <div class="gcs-panel" id="gcsPanel">
+        <div class="gcs-title">GCS</div>
+        <div class="gcs-row">
+          <label for="gcsEye">Eye</label>
+          <select id="gcsEye">
+            <option value="4">4 Spontaneous</option>
+            <option value="3">3 To voice</option>
+            <option value="2">2 To pain</option>
+            <option value="1">1 None</option>
+          </select>
+        </div>
+        <div class="gcs-row">
+          <label for="gcsVerbal">Verbal</label>
+          <select id="gcsVerbal">
+            <option value="5">5 Oriented</option>
+            <option value="4">4 Confused</option>
+            <option value="3">3 Words</option>
+            <option value="2">2 Sounds</option>
+            <option value="1">1 None</option>
+          </select>
+        </div>
+        <div class="gcs-row">
+          <label for="gcsMotor">Motor</label>
+          <select id="gcsMotor">
+            <option value="6">6 Obeys</option>
+            <option value="5">5 Localizes</option>
+            <option value="4">4 Withdraws</option>
+            <option value="3">3 Flexion</option>
+            <option value="2">2 Extension</option>
+            <option value="1">1 None</option>
+          </select>
+        </div>
+        <div class="gcs-total" id="gcsTotal">GCS 15/15</div>
       </div>
     </div>`;
+  mainScroll.querySelector('#homeAddNewBtn')?.addEventListener('click', () => createVoiceDraft(null));
+  mainScroll.querySelector('#homeScanQrBtn')?.addEventListener('click', () => window.alert('Scan QR will be connected next.'));
   mainScroll.querySelectorAll('[data-home-template-mode]').forEach(button => {
     button.addEventListener('click', () => createVoiceDraft(button.dataset.homeTemplateMode || null));
+  });
+  const toolsBtn = mainScroll.querySelector('#homeToolsBtn');
+  const toolsMenu = mainScroll.querySelector('#homeToolsMenu');
+  const gcsPanel = mainScroll.querySelector('#gcsPanel');
+  const gcsTotal = mainScroll.querySelector('#gcsTotal');
+  const updateGcsTotal = () => {
+    const total = ['#gcsEye','#gcsVerbal','#gcsMotor'].reduce((sum, selector) => {
+      return sum + Number(mainScroll.querySelector(selector)?.value || 0);
+    }, 0);
+    if (gcsTotal) gcsTotal.textContent = `GCS ${total}/15`;
+  };
+  toolsBtn?.addEventListener('click', () => {
+    const isOpen = toolsMenu?.classList.toggle('open');
+    toolsBtn.setAttribute('aria-expanded', String(Boolean(isOpen)));
+  });
+  mainScroll.querySelector('#homeGcsBtn')?.addEventListener('click', () => {
+    toolsMenu?.classList.remove('open');
+    toolsBtn?.setAttribute('aria-expanded', 'false');
+    gcsPanel?.classList.add('visible');
+    updateGcsTotal();
+  });
+  mainScroll.querySelectorAll('#gcsEye,#gcsVerbal,#gcsMotor').forEach(select => {
+    select.addEventListener('change', updateGcsTotal);
   });
 }
 
@@ -7815,6 +8009,15 @@ searchScopeToggle.addEventListener('click', event => {
 });
 mobileMenuBtn.addEventListener('click', openMobileSidebar);
 mobileListBtn.addEventListener('click', openMobileSidebar);
+mobileSidebarNewBtn.addEventListener('click', () => {
+  closeMobileSidebar();
+  showHomeScreen();
+});
+mobileSidebarSettingsBtn.addEventListener('click', event => {
+  event.stopPropagation();
+  openSettings();
+});
+mobileSidebarBackBtn.addEventListener('click', closeMobileSidebar);
 topbarPatient.addEventListener('click', openMobileSidebar);
 topbarPatient.addEventListener('keydown', event => {
   if (event.key === 'Enter' || event.key === ' '){
