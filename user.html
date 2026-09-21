@@ -634,6 +634,7 @@
   .visit-toggle-btn.active{ background:var(--teal); color:#fff; }
   .date-step,.date-today{ height:38px; border:1px solid var(--border); border-radius:10px; background:#EEF3F7; color:#263444; cursor:pointer; font-weight:800; }
   .date-step{ width:38px; font-size:23px; line-height:1; }
+  .date-step:disabled{ opacity:.38; cursor:not-allowed; }
   .date-today{ display:none; padding:0 13px; background:var(--teal); border-color:var(--teal-deep); color:#fff; font-size:13px; box-shadow:0 4px 10px -6px var(--teal-deep); }
   .date-display{ display:none; }
   .date-input{ height:38px; width:142px; border:1px solid #D8E1E7; border-radius:10px; background:#fff; color:#17212B; padding:0 10px; font:700 13px 'Inter',sans-serif; }
@@ -2011,6 +2012,7 @@
       justify-content:center;
       padding:0;
     }
+    .date-step:disabled{ opacity:.28; background:#F6F8F6; }
     .date-step:first-of-type{ border-right:1px solid #E7ECE8; }
     .date-step:last-of-type{ border-left:1px solid #E7ECE8; }
     .date-display{
@@ -2694,7 +2696,7 @@
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
 import { browserLocalPersistence, getAuth, onAuthStateChanged, setPersistence, signInAnonymously, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
-import { getFirestore, collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDoc, getDocs, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
+import { getFirestore, collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDoc, getDocs, setDoc, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
 
 const firebaseApp = initializeApp(firebaseConfig);
@@ -3001,6 +3003,12 @@ let dateSubscriptionRequestId = 0;
 let saveFeedbackTimer = null;
 let saveFeedbackUntil = 0;
 let sidebarIdentityRefreshTimer = null;
+const NOTE_RETENTION_MS = 48 * 60 * 60 * 1000;
+const expiryCleanupKeys = new Set();
+
+function noteExpiryTimestamp(){
+  return Timestamp.fromDate(new Date(Date.now() + NOTE_RETENTION_MS));
+}
 let templateCloseTimer = null;
 let mmseSelections = new Set();
 let lastEditorSelectionRange = null;
@@ -3972,6 +3980,7 @@ async function addTimelinePatientToToday(sourceRecord){
   const draftData = {
     heading:'Review Note draft',
     createdAt:null,
+    expiresAt:noteExpiryTimestamp(),
     createdAtLabel:createdAt,
     visitDate:selectedDateString,
     visitType:sourceVisitType,
@@ -4302,6 +4311,7 @@ function noteFromSnapshot(snapshot, ownerUid = currentUser?.uid){
     ownerUid,
     ownerLabel:ownerDisplayName(ownerUid),
     createdAtValue:data.createdAt,
+    expiresAtValue:data.expiresAt || null,
     name:data.patientData?.name || 'Visit Note draft',
     uhid:data.patientData?.uhid || 'NIL',
     age:data.patientData?.age || 'NIL',
@@ -4332,6 +4342,7 @@ function noteMatchesSelectedVisitType(note){
 
 function noteMatchesSelectedScope(note, selectedDate = dateInputValue(selectedVisitDate)){
   if (note?.isDeleted) return false;
+  if (noteExpired(note)) return false;
   if (!noteMatchesSelectedVisitType(note)) return false;
   if (selectedVisitType !== 'IP') return note.visitDate === selectedDate;
   const admissionDate = note.admissionDate || note.visitDate || selectedDate;
@@ -4340,11 +4351,35 @@ function noteMatchesSelectedScope(note, selectedDate = dateInputValue(selectedVi
   return !dischargeDate || dischargeDate >= selectedDate;
 }
 
+function noteAgeMillis(note){
+  return timestampMillis(note?.createdAtValue);
+}
+
+function noteExpired(note){
+  const expiresAt = timestampMillis(note?.expiresAtValue);
+  if (expiresAt) return Date.now() >= expiresAt;
+  const createdAt = noteAgeMillis(note);
+  return Boolean(createdAt && Date.now() - createdAt >= NOTE_RETENTION_MS);
+}
+
+function deleteExpiredNotes(recordsToCheck = []){
+  recordsToCheck.forEach(record => {
+    if (!record || record.isDeleted || !noteExpired(record)) return;
+    const key = recordLocalKey(record);
+    if (!key || expiryCleanupKeys.has(key)) return;
+    expiryCleanupKeys.add(key);
+    deleteDoc(noteDocRef(record))
+      .catch(error => console.error('Expired note cleanup failed:', error))
+      .finally(() => expiryCleanupKeys.delete(key));
+  });
+}
+
 async function latestVisitDateForSelectedType(){
   const owners = sharedOwnerIds.length ? sharedOwnerIds : [currentUser.uid];
   const snapshots = await Promise.all(owners.map(ownerUid => getDocs(collection(db,'users',ownerUid,'notes')).catch(() => null)));
   return snapshots
     .flatMap((snapshot, index) => snapshot ? snapshot.docs.map(docSnap => noteFromSnapshot(docSnap, owners[index])) : [])
+    .filter(note => !noteExpired(note))
     .filter(noteMatchesSelectedVisitType)
     .map(note => note.visitDate)
     .filter(Boolean)
@@ -4480,7 +4515,9 @@ function subscribeToSelectedDate({allowLatestDateFallback = false} = {}){
       : query(collection(db,'users',ownerUid,'notes'),where('visitDate','==',selectedDate));
     const unsubscribe = onSnapshot(notesQuery,async snapshot => {
       receivedOwners += ownerRecords.has(ownerUid) ? 0 : 1;
-      ownerRecords.set(ownerUid, snapshot.docs.map(docSnap => noteFromSnapshot(docSnap, ownerUid)));
+      const ownerNotes = snapshot.docs.map(docSnap => noteFromSnapshot(docSnap, ownerUid));
+      deleteExpiredNotes(ownerNotes);
+      ownerRecords.set(ownerUid, ownerNotes.filter(note => !noteExpired(note)));
       await applyRecords();
     }, error => {
       console.error('Unable to load notes:',error);
@@ -4510,7 +4547,9 @@ function subscribeToAllRecords(){
   const owners = sharedOwnerIds.length ? sharedOwnerIds : [currentUser.uid];
   owners.forEach(ownerUid => {
     const unsubscribe = onSnapshot(collection(db,'users',ownerUid,'notes'), snapshot => {
-      allOwnerRecords.set(ownerUid, snapshot.docs.map(docSnap => applyLocalDirtyRecord(noteFromSnapshot(docSnap, ownerUid))));
+      const ownerNotes = snapshot.docs.map(docSnap => noteFromSnapshot(docSnap, ownerUid));
+      deleteExpiredNotes(ownerNotes);
+      allOwnerRecords.set(ownerUid, ownerNotes.filter(note => !noteExpired(note)).map(applyLocalDirtyRecord));
       allRecords = Array.from(allOwnerRecords.values()).flat();
       if (searchScope === 'all'){
         renderEntries();
@@ -6383,6 +6422,7 @@ async function stopAndTranscribe(){
       selectedMode:draft.selectedMode,
       visitType:draft.visitType || selectedVisitType,
       status:'Note ready',
+      expiresAt:noteExpiryTimestamp(),
       updatedAt:serverTimestamp()
     }).catch(error => {
       console.error('Generated note save failed:', error);
@@ -6836,6 +6876,7 @@ async function finishNewVoiceDraft(audioBlob, apiKey, onRetry){
     visitType:draftVisitType,
     ...(draftVisitType === 'IP' ? {admissionDate} : {admissionDate:null}),
     status:'Note ready',
+    expiresAt:noteExpiryTimestamp(),
     updatedAt:serverTimestamp()
   }).catch(error => {
     console.error('Generated continuation note save failed:', error);
@@ -7686,6 +7727,7 @@ async function createVoiceDraft(mode = null){
       const draftData = {
         heading: voiceDraftHeadingForMode(selectedMode),
         createdAt:null,
+        expiresAt:noteExpiryTimestamp(),
         createdAtLabel:createdAt,
         visitDate:requestedDateString,
         visitType:requestedVisitType,
@@ -7749,6 +7791,7 @@ async function createManualDraft(){
     const draftData = {
       heading: 'Manual note draft',
       createdAt:null,
+      expiresAt:noteExpiryTimestamp(),
       createdAtLabel:createdAt,
       visitDate:selectedDateString,
       visitType:selectedVisitType,
@@ -7910,6 +7953,25 @@ function dateInputValue(date){
   return `${year}-${month}-${day}`;
 }
 
+function dateOnly(offsetDays = 0){
+  const date = new Date();
+  date.setHours(0,0,0,0);
+  date.setDate(date.getDate() + offsetDays);
+  return date;
+}
+
+function maxAccessibleVisitDate(){
+  return dateOnly(0);
+}
+
+function clampAccessibleVisitDate(date){
+  const candidate = new Date(date);
+  candidate.setHours(0,0,0,0);
+  const maxDate = maxAccessibleVisitDate();
+  if (candidate > maxDate) return maxDate;
+  return candidate;
+}
+
 function compactDateLabel(date){
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -7918,15 +7980,20 @@ function compactDateLabel(date){
 }
 
 function updateDateNavigation(){
+  selectedVisitDate = clampAccessibleVisitDate(selectedVisitDate);
   visitDateInput.value = dateInputValue(selectedVisitDate);
+  visitDateInput.removeAttribute('min');
+  visitDateInput.max = dateInputValue(maxAccessibleVisitDate());
   visitDateDisplay.textContent = compactDateLabel(selectedVisitDate);
   todayBtn.textContent = selectedVisitDate.toLocaleDateString('en-US',{weekday:'long'});
+  previousDateBtn.disabled = false;
+  nextDateBtn.disabled = dateInputValue(selectedVisitDate) >= dateInputValue(maxAccessibleVisitDate());
 }
 
 function moveVisitDate(days){
   const next = new Date(selectedVisitDate);
   next.setDate(next.getDate() + days);
-  selectedVisitDate = next;
+  selectedVisitDate = clampAccessibleVisitDate(next);
   if (searchScope === 'all'){
     searchScope = 'today';
     selectedTimelineKey = null;
@@ -7947,7 +8014,7 @@ visitDateDisplay.addEventListener('click', () => {
   }
 });
 todayBtn.addEventListener('click', () => {
-  selectedVisitDate = new Date();
+  selectedVisitDate = maxAccessibleVisitDate();
   if (searchScope === 'all'){
     searchScope = 'today';
     selectedTimelineKey = null;
@@ -7958,7 +8025,7 @@ todayBtn.addEventListener('click', () => {
 });
 visitDateInput.addEventListener('change', () => {
   const [year,month,day] = visitDateInput.value.split('-').map(Number);
-  if (year && month && day) selectedVisitDate = new Date(year,month-1,day);
+  if (year && month && day) selectedVisitDate = clampAccessibleVisitDate(new Date(year,month-1,day));
   if (searchScope === 'all'){
     searchScope = 'today';
     selectedTimelineKey = null;
