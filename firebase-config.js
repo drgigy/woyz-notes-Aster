@@ -1,8 +1,8 @@
 export const firebaseConfig = {
-  "apiKey": "AIzaSyA_LoTqVtGx6LTokFO5BVXpPfVw4y3YxAI",
-  "authDomain": "woyz-notes-20260807073630-6071.firebaseapp.com",
-  "projectId": "woyz-notes-20260807073630-6071",
-  "storageBucket": "woyz-notes-20260807073630-6071.firebasestorage.app",
-  "messagingSenderId": "403388564806",
-  "appId": "1:403388564806:web:5547570896156e4b339147"
+  "apiKey": "AIzaSyCuFA7wegr5nl-pdZaE3XbazuMZIb-xPLY",
+  "authDomain": "stroke-code-demo-1.firebaseapp.com",
+  "projectId": "stroke-code-demo-1",
+  "storageBucket": "stroke-code-demo-1.firebasestorage.app",
+  "messagingSenderId": "1098364915585",
+  "appId": "1:1098364915585:web:c182ddd7ac23c38fada280"
 };
