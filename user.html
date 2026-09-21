@@ -126,7 +126,6 @@
   .mobile-doc-actions,
   .search-scope-toggle,
   #addNoteBtn,
-  #mobileAddNoteBtn,
   [data-mmse-open]{
     display:none !important;
   }
@@ -188,6 +187,52 @@
     -webkit-tap-highlight-color:transparent;
   }
   .mobile-template-option:active{ transform:scale(.98); }
+  .home-template-grid{
+    width:min(720px,100%);
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px;
+    margin-top:22px;
+  }
+  .home-template-card{
+    min-height:112px;
+    border:1px solid #DDE5E0;
+    border-radius:16px;
+    background:#fff;
+    color:#1E2521;
+    padding:18px;
+    text-align:left;
+    cursor:pointer;
+    box-shadow:0 12px 30px -26px rgba(20,35,29,.55);
+    transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+  }
+  .home-template-card:hover{
+    transform:translateY(-1px);
+    border-color:var(--teal);
+    box-shadow:0 16px 34px -28px rgba(31,95,82,.72);
+  }
+  .home-template-title{
+    display:block;
+    font:900 17px/1.15 'Inter',sans-serif;
+    margin-bottom:8px;
+  }
+  .home-template-sub{
+    display:block;
+    color:var(--muted);
+    font:700 12px/1.35 'Inter',sans-serif;
+  }
+  .mobile-home-btn{
+    display:none;
+    border:0;
+    border-radius:999px;
+    background:#fff;
+    color:var(--teal);
+    font:900 13px 'Inter',sans-serif;
+    padding:9px 14px;
+    box-shadow:0 8px 24px -18px rgba(31,95,82,.65);
+    pointer-events:auto;
+    justify-self:start;
+  }
   .add-note-btn:hover{ background:var(--teal-deep); transform:translateY(-1px); box-shadow:0 10px 22px -12px rgba(31,95,82,.7); }
   .add-note-btn:active{ transform:translateY(0); }
   .add-note-icon{ font-size:22px; line-height:1; }
@@ -1643,7 +1688,7 @@
       z-index:60;
       height:52px;
       display:grid;
-      grid-template-columns:52px 1fr;
+      grid-template-columns:52px auto 1fr;
       align-items:center;
       padding:0 max(10px,env(safe-area-inset-right)) 0 max(10px,env(safe-area-inset-left));
       pointer-events:none;
@@ -1670,6 +1715,7 @@
     .mobile-menu-btn span::before{ transform:translateY(-8px); }
     .mobile-menu-btn span::after{ transform:translateY(5.5px); }
     .mobile-title{ display:none; }
+    .mobile-home-btn{ display:inline-flex; align-items:center; justify-content:center; }
     .mobile-backdrop{
       position:fixed;
       inset:0;
@@ -1711,12 +1757,15 @@
       letter-spacing:.2px;
       line-height:1.1;
     }
-    .mobile-doc-actions{
-      display:grid;
-      grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:8px;
-      margin-top:10px;
+    .record-btn{
+      opacity:.58;
+      cursor:default;
+      pointer-events:none;
     }
+    #addNoteBtn{
+      display:flex !important;
+    }
+    .mobile-doc-actions{ display:none; }
     .mobile-doc-action{
       min-height:42px;
       border:1px solid var(--teal);
@@ -2014,12 +2063,22 @@
       z-index:55;
       height:76px;
       display:grid;
-      grid-template-columns:repeat(5,1fr);
+      grid-template-columns:repeat(3,1fr);
       align-items:center;
       padding:8px 18px max(8px,env(safe-area-inset-bottom));
       border-top:1px solid var(--border);
       background:rgba(255,255,255,.97);
       backdrop-filter:blur(12px);
+    }
+    .home-template-grid{
+      grid-template-columns:1fr;
+      gap:10px;
+      margin-top:18px;
+    }
+    .home-template-card{
+      min-height:88px;
+      border-radius:14px;
+      padding:15px 16px;
     }
     .mobile-action{
       width:48px;height:48px;
@@ -2077,7 +2136,7 @@
   <div class="mobile-app-bar" aria-hidden="false">
     <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open records"><span></span></button>
     <div class="mobile-title">WOYZ</div>
-    <div></div>
+    <button class="mobile-home-btn" id="mobileHomeBtn" type="button">Home</button>
   </div>
   <div class="mobile-backdrop" id="mobileBackdrop"></div>
 
@@ -2093,7 +2152,7 @@
       </button>
       <button class="add-note-btn" id="addNoteBtn">
         <span class="add-note-icon">+</span>
-        <span>Note</span>
+        <span>New</span>
       </button>
     </div>
     <div class="visit-toggle" id="visitToggle" aria-label="Visit type">
@@ -2227,12 +2286,6 @@
     </button>
     <button class="mobile-action danger" id="mobileDeleteBtn" aria-label="Delete note">
       <svg width="27" height="27" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </button>
-    <button class="mobile-action primary" id="mobileRecordBtn" aria-label="Voice note">
-      <svg width="31" height="31" viewBox="0 0 24 24" fill="none"><rect x="9" y="3" width="6" height="11" rx="3" stroke="currentColor" stroke-width="2"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-    </button>
-    <button class="mobile-action" id="mobileAddNoteBtn" aria-label="Add note">
-      <svg width="29" height="29" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </button>
     <button class="mobile-action" id="mobileSaveBtn" aria-label="Save note">
       <svg width="29" height="29" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17l9-10" stroke="#0A781F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -2592,11 +2645,10 @@ const recordBtn = document.getElementById('recordBtn');
 const recordSub = document.getElementById('recordSub');
 const appShell = document.getElementById('appShell');
 const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+const mobileHomeBtn = document.getElementById('mobileHomeBtn');
 const mobileBackdrop = document.getElementById('mobileBackdrop');
 const mobileCopyBtn = document.getElementById('mobileCopyBtn');
 const mobileDeleteBtn = document.getElementById('mobileDeleteBtn');
-const mobileRecordBtn = document.getElementById('mobileRecordBtn');
-const mobileAddNoteBtn = document.getElementById('mobileAddNoteBtn');
 const mobileSaveBtn = document.getElementById('mobileSaveBtn');
 const mobileTemplateSheet = document.getElementById('mobileTemplateSheet');
 const continueNoteBtn = document.getElementById('continueNoteBtn');
@@ -2737,6 +2789,7 @@ let selectedIpTimelineKey = null;
 let selectedIpTimelineDate = null;
 let pendingSelectId = null;
 let pendingNewVoiceDockId = null;
+let homeModeActive = false;
 let draftCreationPromise = null;
 let latestDateLookupInProgress = false;
 let dateSubscriptionRequestId = 0;
@@ -3428,6 +3481,7 @@ function fullVisitDateLabel(value){
 }
 
 function renderPatientTimeline(key){
+  homeModeActive = false;
   const timelineRecords = timelineRecordsForKey(key);
   if (!timelineRecords.length){
     showEmptyDate('No previous notes found for this patient.');
@@ -3477,6 +3531,7 @@ function renderPatientTimeline(key){
 }
 
 function renderOpPatientTimeline(key, entryId = selectedOpTimelineEntryId || 'all'){
+  homeModeActive = false;
   const timelineRecords = opTimelineRecordsForKey(key);
   if (!timelineRecords.length){
     showEmptyDate('No OP entries found for this patient.');
@@ -3579,6 +3634,7 @@ function openOpTimelineForRecord(record, entryId = null){
 }
 
 function renderIpPatientTimeline(key, date = selectedIpTimelineDate || dateInputValue(selectedVisitDate)){
+  homeModeActive = false;
   const dateGroups = ipTimelineDateGroupsForKey(key);
   if (!dateGroups.length){
     showEmptyDate('No IP entries found for this patient.');
@@ -4232,6 +4288,10 @@ function subscribeToSelectedDate({allowLatestDateFallback = false} = {}){
       return bTime - aTime;
     });
     renderEntries();
+    if (homeModeActive && !pendingSelectId && !pendingNewVoiceDockId){
+      showHomeScreen();
+      return;
+    }
     if (searchScope === 'all') return;
     if (pendingNewVoiceDockId){
       clearTimelineSelection();
@@ -4374,6 +4434,7 @@ function subscribeToGroups(){
 
 function showEmptyDate(message = 'No notes saved for this date.'){
   activeIndex = null;
+  homeModeActive = false;
   selectedOpTimelineKey = null;
   selectedOpTimelineEntryId = 'all';
   selectedOpTimelineReviewIndex = null;
@@ -4388,6 +4449,48 @@ function showEmptyDate(message = 'No notes saved for this date.'){
   dischargeBtn.classList.remove('visible');
   renderTimelineMenu();
   mainScroll.innerHTML = `<div class="empty-state"><div class="empty-title">No notes</div><div class="empty-sub">${escapeHtml(message)}</div></div>`;
+}
+
+function showHomeScreen(){
+  homeModeActive = true;
+  activeIndex = null;
+  clearTimelineSelection();
+  stopVoiceTimer();
+  stopMediaTracks();
+  updateContinueNoteButton();
+  topbarPatient.classList.remove('visible');
+  copyBtn.style.display = 'none';
+  hidePrintMenuState();
+  saveDraftBtn.classList.remove('visible');
+  deleteBtn.classList.remove('visible');
+  dischargeBtn.classList.remove('visible');
+  renderTimelineMenu();
+  mainScroll.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-title">Home</div>
+      <div class="empty-sub">Select what you want to create.</div>
+      <div class="home-template-grid">
+        <button class="home-template-card" type="button" data-home-template-mode="Discharge summary">
+          <span class="home-template-title">Discharge summary</span>
+          <span class="home-template-sub">Emergency discharge document</span>
+        </button>
+        <button class="home-template-card" type="button" data-home-template-mode="">
+          <span class="home-template-title">Visit note</span>
+          <span class="home-template-sub">OP clinical note</span>
+        </button>
+        <button class="home-template-card" type="button" data-home-template-mode="Reply letter">
+          <span class="home-template-title">Reply letter</span>
+          <span class="home-template-sub">Clean professional letter</span>
+        </button>
+        <button class="home-template-card" type="button" data-home-template-mode="Medical certificate">
+          <span class="home-template-title">Medical certificate</span>
+          <span class="home-template-sub">Certificate body for patient</span>
+        </button>
+      </div>
+    </div>`;
+  mainScroll.querySelectorAll('[data-home-template-mode]').forEach(button => {
+    button.addEventListener('click', () => createVoiceDraft(button.dataset.homeTemplateMode || null));
+  });
 }
 
 function updateContinueNoteButton(){
@@ -4472,6 +4575,7 @@ async function saveOpAllEntries(){
   renderEntries();
   renderTimelineMenu();
   flashSaveButton();
+  showHomeScreen();
   return true;
 }
 
@@ -4617,6 +4721,7 @@ function removeNilSectionsForCopy(text){
 }
 
 function selectEntry(i,{preserveDirtyEditor = false} = {}){
+  homeModeActive = false;
   activeIndex = i;
   selectedOpTimelineKey = null;
   selectedOpTimelineEntryId = 'all';
@@ -7305,6 +7410,7 @@ async function withDraftCreationLock(task){
 async function createVoiceDraft(mode = null){
   if (!currentUser) return;
   return withDraftCreationLock(async () => {
+    homeModeActive = false;
     const selectedMode = mode || null;
     const requestedVisitType = 'OP';
     const requestedDateString = dateInputValue(selectedVisitDate);
@@ -7657,11 +7763,7 @@ topbarPatient.addEventListener('keydown', event => {
 mobileBackdrop.addEventListener('click', closeMobileSidebar);
 mobileCopyBtn.addEventListener('click', () => copyBtn.click());
 mobileDeleteBtn.addEventListener('click', () => deleteBtn.click());
-mobileRecordBtn.addEventListener('click', async event => {
-  event.preventDefault();
-  mobileTemplateSheet.classList.toggle('visible');
-  closeMobileSidebar();
-});
+mobileHomeBtn.addEventListener('click', showHomeScreen);
 mobileTemplateSheet.addEventListener('click', async event => {
   const button = event.target.closest('[data-mobile-template-mode]');
   if (!button) return;
@@ -7670,10 +7772,9 @@ mobileTemplateSheet.addEventListener('click', async event => {
 });
 document.addEventListener('click', event => {
   if (!mobileTemplateSheet.classList.contains('visible')) return;
-  if (event.target.closest('#mobileRecordBtn') || event.target.closest('#mobileTemplateSheet')) return;
+  if (event.target.closest('#mobileTemplateSheet')) return;
   mobileTemplateSheet.classList.remove('visible');
 });
-mobileAddNoteBtn.addEventListener('click', () => addNoteBtn.click());
 mobileSaveBtn.addEventListener('click', () => saveDraftBtn.click());
 continueNoteBtn.addEventListener('click', openContinuationDock);
 topbarContinueBtn.addEventListener('click', openContinuationDock);
@@ -8047,11 +8148,11 @@ signoutBtn.addEventListener('click', async () => {
 
 recordBtn.addEventListener('click', async event => {
   event.preventDefault();
-  await createVoiceDraft();
+});
+addNoteBtn.addEventListener('click', () => {
+  showHomeScreen();
   closeMobileSidebar();
 });
-addNoteBtn.addEventListener('click', createManualDraft);
-addNoteBtn.addEventListener('click', closeMobileSidebar);
 
 document.addEventListener('keydown', (event) => {
   const isTyping = ['INPUT','TEXTAREA'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable;
@@ -8251,6 +8352,7 @@ saveDraftBtn.addEventListener('click', async () => {
   });
   clearRecordDirty(draft);
   flashSaveButton();
+  showHomeScreen();
 });
 
 function extractPatientFromNote(text, fallback = {}){
