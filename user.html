@@ -4621,6 +4621,39 @@ function compactNoteText(text){
 }
 
 const NOTE_SECTION_LOOKAHEAD = '(?:Patient Name|Age|UHID|Sex|Presenting Complaint|History of Present Illness|Past Medical or Surgical History|Allergies|Family History|Personal History|Examination Findings|Review of Investigations|Current Medications|Diagnosis|Treatment Plan|Advice|Instructions?|Follow[- ]?up|Prescription|Review Note(?:\\s*\\([^)]*\\))?)';
+const DISCHARGE_SUMMARY_HEADINGS = [
+  'Name','Age/Gender','UHID','IP No.','IP No','Address','Consultant','DOA','DOD',
+  'DIAGNOSIS','PROCEDURE DONE','DRUG ALLERGY','HISTORY','CLINICAL EXAMINATION',
+  'INVESTIGATIONS','LAB','RADIOLOGY','PROCEDURE / OPERATION NOTES','PROCEDURE/OPERATION NOTES',
+  'OTHERS','GENERAL INSTRUCTIONS','REASON FOR ADMISSION','COURSE IN HOSPITAL',
+  'MEDICATIONS ADMINISTERED','CONDITION AT DISCHARGE','ADVICE ON DISCHARGE'
+];
+
+function isDischargeSummaryMode(record){
+  const mode = String(record?.selectedMode || record?.heading || '').trim();
+  return /discharge summary/i.test(mode);
+}
+
+function formatDischargeSummaryText(text){
+  let normalized = String(text || '').replace(/\r\n/g, '\n').trim();
+  if (!normalized) return '';
+  normalized = normalized.replace(/^Discharge Summary\s+(?=Name\s*:)/i, 'Discharge Summary\n\n');
+  DISCHARGE_SUMMARY_HEADINGS
+    .sort((a,b) => b.length - a.length)
+    .forEach(label => {
+      const canonical = label === 'IP No' ? 'IP No.' : label === 'PROCEDURE/OPERATION NOTES' ? 'PROCEDURE / OPERATION NOTES' : label;
+      normalized = normalized.replace(new RegExp(`(^|\\s+)(${escapeRegExp(label)}):\\s*`, 'gi'), (match, leading) => {
+        const prefix = leading && leading.includes('\n') ? '\n\n' : '\n\n';
+        return `${prefix}${canonical}:\n`;
+      });
+    });
+  normalized = normalized
+    .replace(/^(?:\n\s*)+/, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  if (!/^Discharge Summary\b/i.test(normalized)) normalized = `Discharge Summary\n\n${normalized}`;
+  return normalized;
+}
 
 function normalizeNumberedSectionHeadings(text){
   return String(text || '')
@@ -4688,6 +4721,7 @@ function organizeIpReviewNotes(text){
 }
 
 function displayNoteTextForRecord(record, text){
+  if (isDischargeSummaryMode(record)) return formatDischargeSummaryText(text);
   const formatted = formatStoredReviewNotes(text);
   return noteVisitType(record) === 'IP' ? organizeIpReviewNotes(formatted) : formatted;
 }
@@ -6713,7 +6747,7 @@ async function generateContentWithRetry({apiKey,audioBlob,audioData,systemPrompt
 function formatGeneratedOutput(data, mode, patient, visitType = selectedVisitType){
   const patientHeader = `Patient Name: ${patient.name}\nAge: ${patient.age}\nUHID: ${patient.uhid}`;
   if (mode === 'Discharge summary'){
-    return String(data.text || '').trim() || templateWithPatientData(DISCHARGE_SUMMARY_TEMPLATE, patient);
+    return formatDischargeSummaryText(String(data.text || '').trim() || templateWithPatientData(DISCHARGE_SUMMARY_TEMPLATE, patient));
   }
   if (mode === 'Review dictation' || mode === 'Reply letter'){
     return `${patientHeader}\n\n${String(data.text || '').trim()}`.trim();

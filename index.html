@@ -370,6 +370,40 @@ function compactNoteText(text){
 }
 
 const NOTE_SECTION_LOOKAHEAD = '(?:Patient Name|Age|UHID|Sex|Presenting Complaint|History of Present Illness|Past Medical or Surgical History|Allergies|Family History|Personal History|Examination Findings|Review of Investigations|Current Medications|Diagnosis|Treatment Plan|Advice|Instructions?|Follow[- ]?up|Prescription|Review Note(?:\\s*\\([^)]*\\))?)';
+const DISCHARGE_SUMMARY_HEADINGS = [
+  'Name','Age/Gender','UHID','IP No.','IP No','Address','Consultant','DOA','DOD',
+  'DIAGNOSIS','PROCEDURE DONE','DRUG ALLERGY','HISTORY','CLINICAL EXAMINATION',
+  'INVESTIGATIONS','LAB','RADIOLOGY','PROCEDURE / OPERATION NOTES','PROCEDURE/OPERATION NOTES',
+  'OTHERS','GENERAL INSTRUCTIONS','REASON FOR ADMISSION','COURSE IN HOSPITAL',
+  'MEDICATIONS ADMINISTERED','CONDITION AT DISCHARGE','ADVICE ON DISCHARGE'
+];
+
+function escapeRegExp(value){
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function isDischargeSummaryNote(note){
+  const mode = String(note?.data?.selectedMode || note?.data?.heading || '').trim();
+  return /discharge summary/i.test(mode);
+}
+
+function formatDischargeSummaryText(text){
+  let normalized = String(text || '').replace(/\r\n/g, '\n').trim();
+  if (!normalized) return '';
+  normalized = normalized.replace(/^Discharge Summary\s+(?=Name\s*:)/i, 'Discharge Summary\n\n');
+  DISCHARGE_SUMMARY_HEADINGS
+    .sort((a,b) => b.length - a.length)
+    .forEach(label => {
+      const canonical = label === 'IP No' ? 'IP No.' : label === 'PROCEDURE/OPERATION NOTES' ? 'PROCEDURE / OPERATION NOTES' : label;
+      normalized = normalized.replace(new RegExp(`(^|\\s+)(${escapeRegExp(label)}):\\s*`, 'gi'), `\n\n${canonical}:\n`);
+    });
+  normalized = normalized
+    .replace(/^(?:\n\s*)+/, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  if (!/^Discharge Summary\b/i.test(normalized)) normalized = `Discharge Summary\n\n${normalized}`;
+  return normalized;
+}
 
 function normalizeNumberedSectionHeadings(text){
   return String(text || '')
@@ -437,6 +471,7 @@ function organizeIpReviewNotes(text){
 }
 
 function displayNoteTextForNote(note, text){
+  if (isDischargeSummaryNote(note)) return formatDischargeSummaryText(text);
   const normalized = normalizeNumberedSectionHeadings(text);
   return noteVisitType(note) === 'IP' ? organizeIpReviewNotes(normalized) : normalized;
 }
