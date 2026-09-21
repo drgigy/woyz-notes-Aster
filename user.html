@@ -268,6 +268,15 @@
     box-shadow:0 18px 44px -28px rgba(20,35,29,.55);
   }
   .home-tools-menu.open{ display:block; }
+  .home-action-status{
+    min-height:22px;
+    margin-top:10px;
+    color:var(--teal-deep);
+    font:900 13px 'Inter',sans-serif;
+    opacity:0;
+    transition:opacity .15s ease;
+  }
+  .home-action-status.visible{ opacity:1; }
   .home-tool-item{
     width:100%;
     min-height:42px;
@@ -4635,6 +4644,7 @@ function showHomeScreen(){
         <button class="home-quick-btn primary" type="button" id="homeAddNewBtn">Add New</button>
         <button class="home-quick-btn" type="button" id="homeScanQrBtn">Scan QR</button>
       </div>
+      <div class="home-action-status" id="homeActionStatus" aria-live="polite"></div>
       <div class="home-template-grid">
         <button class="home-template-card" type="button" data-home-template-mode="Discharge summary">
           <span class="home-template-title">Discharge summary</span>
@@ -4690,8 +4700,20 @@ function showHomeScreen(){
         <div class="gcs-total" id="gcsTotal">GCS 15/15</div>
       </div>
     </div>`;
-  mainScroll.querySelector('#homeAddNewBtn')?.addEventListener('click', () => createVoiceDraft(null));
-  mainScroll.querySelector('#homeScanQrBtn')?.addEventListener('click', () => window.alert('Scan QR will be connected next.'));
+  const homeActionStatus = mainScroll.querySelector('#homeActionStatus');
+  let homeActionStatusTimer = null;
+  const flashHomeStatus = message => {
+    if (!homeActionStatus) return;
+    clearTimeout(homeActionStatusTimer);
+    homeActionStatus.textContent = message;
+    homeActionStatus.classList.add('visible');
+    homeActionStatusTimer = setTimeout(() => {
+      homeActionStatus.classList.remove('visible');
+      homeActionStatus.textContent = '';
+    }, 1000);
+  };
+  mainScroll.querySelector('#homeAddNewBtn')?.addEventListener('click', () => flashHomeStatus('Please select a template.'));
+  mainScroll.querySelector('#homeScanQrBtn')?.addEventListener('click', () => flashHomeStatus('Currently the feature is not activated.'));
   mainScroll.querySelectorAll('[data-home-template-mode]').forEach(button => {
     button.addEventListener('click', () => createVoiceDraft(button.dataset.homeTemplateMode || null));
   });
