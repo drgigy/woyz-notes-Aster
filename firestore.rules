@@ -9,7 +9,7 @@ service cloud.firestore {
     function isAdmin() {
       return request.auth != null
         && (
-          request.auth.uid == "Umb3lIKZfbXlLHth7OwDNFRvmUD3"
+          request.auth.uid == "kzlnh5rBzpTlYEqF7Ou35F1YWaa2"
           || request.auth.token.email == "drgigy@gmail.com"
         );
     }
