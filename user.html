@@ -7027,10 +7027,8 @@ async function createVoiceDraft(mode = null){
     const selectedMode = mode || null;
     const requestedVisitType = 'OP';
     const requestedDateString = dateInputValue(selectedVisitDate);
-    const shouldPrefillPatient = ['Medical certificate','Reply letter','Discharge summary'].includes(selectedMode);
-    const sourceRecord = shouldPrefillPatient ? (activeIndex !== null ? records[activeIndex] : (selectedOpTimelineRecord() || latestOpTimelineRecord())) : null;
-    const sourcePatientData = shouldPrefillPatient ? selectedPatientDataForNewDraft() : {name:'NIL',age:'NIL',uhid:'NIL',sex:'NIL'};
-    const sourceKey = sourceRecord && !sourceRecord.voiceDraft ? patientSearchKey(sourceRecord) : null;
+    const sourcePatientData = {name:'NIL',age:'NIL',uhid:'NIL',sex:'NIL'};
+    const sourceKey = null;
     openPreparingNewVoiceDock(selectedMode);
     if (searchScope === 'all'){
       searchScope = 'today';
