@@ -384,6 +384,7 @@ const DISCHARGE_INLINE_LABELS = [
   'Head','Face','Eyes','Oral Cavity','Oral cavity','Ear','Nose','Chest','Abdomen',
   'Musculoskeletal System','Right upper limb','Right lower limb','Local examination'
 ];
+const DISCHARGE_DEMOGRAPHIC_LABELS = ['Name','Age/Gender','UHID','IP No.','Address','Consultant','DOA','DOD'];
 
 function escapeRegExp(value){
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -397,8 +398,10 @@ function isDischargeSummaryNote(note){
 function formatDischargeSummaryText(text){
   let normalized = String(text || '').replace(/\r\n/g, '\n').trim();
   if (!normalized) return '';
-  normalized = normalized.replace(/^Discharge Summary\s+(?=Name\s*:)/i, 'Discharge Summary\n\n');
-  normalized = normalized.replace(/(^|\s+)Discharge Summary\s+(?=(?:Name|Age\/Gender|UHID|IP No\.?|Address|Consultant|DOA|DOD|DIAGNOSIS)\s*:)/gi, '\n\nDischarge Summary\n\n');
+  normalized = normalized
+    .replace(/(^|\n)\s*Discharge Summary(?:\s*[-–—]\s*[^\n]*)?\s*(?=\n|$)/gi, '\n')
+    .replace(/^Discharge Summary\s+(?=Name\s*:)/i, '')
+    .replace(/(^|\s+)Discharge Summary\s+(?=(?:Name|Age\/Gender|UHID|IP No\.?|Address|Consultant|DOA|DOD|DIAGNOSIS)\s*:)/gi, '\n\n');
   const headingTokens = [];
   DISCHARGE_SUMMARY_HEADINGS
     .sort((a,b) => b.length - a.length)
@@ -411,6 +414,7 @@ function formatDischargeSummaryText(text){
   headingTokens.forEach(([token, canonical]) => {
     normalized = normalized.split(`${token}:`).join(`${canonical}:`);
   });
+  normalized = compactDischargeDemographicHeader(normalized);
   DISCHARGE_INLINE_LABELS
     .sort((a,b) => b.length - a.length)
     .forEach(label => {
@@ -433,6 +437,41 @@ function formatDischargeSummaryText(text){
     .replace(/\n{3,}/g, '\n\n')
     .trim();
   return normalized;
+}
+
+function compactDischargeDemographicHeader(text){
+  const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
+  const values = new Map();
+  const consumed = new Set();
+  const demoPattern = /^(Name|Age\/Gender|UHID|IP No\.?|Address|Consultant|DOA|DOD):\s*(.*)$/i;
+  const sectionPattern = /^(?:DIAGNOSIS|PROCEDURE DONE|DRUG ALLERGY|HISTORY|CLINICAL EXAMINATION|INVESTIGATIONS|LAB|RADIOLOGY|PROCEDURE\s*\/\s*OPERATION NOTES|OTHERS|GENERAL INSTRUCTIONS|REASON FOR ADMISSION|COURSE IN HOSPITAL|MEDICATIONS ADMINISTERED|CONDITION AT DISCHARGE|ADVICE ON DISCHARGE|MEDICATIONS|HOME MEDICATIONS|DIET ADVICE|FOLLOW UP DATE|REVIEW|WHEN TO OBTAIN URGENT CARE):/i;
+  const canonicalLabel = label => /^ip no\.?$/i.test(label) ? 'IP No.' : label.replace(/^doa$/i, 'DOA').replace(/^dod$/i, 'DOD');
+  for (let index = 0; index < lines.length; index += 1){
+    if (sectionPattern.test(lines[index].trim())) break;
+    const match = lines[index].trim().match(demoPattern);
+    if (!match) continue;
+    const label = canonicalLabel(match[1].trim());
+    let value = match[2].trim();
+    consumed.add(index);
+    let cursor = index + 1;
+    while (!value && cursor < lines.length && !demoPattern.test(lines[cursor].trim()) && !sectionPattern.test(lines[cursor].trim())){
+      const candidate = lines[cursor].trim();
+      consumed.add(cursor);
+      if (candidate) value = candidate;
+      cursor += 1;
+    }
+    values.set(label, value || 'NIL');
+  }
+  if (!DISCHARGE_DEMOGRAPHIC_LABELS.some(label => values.has(label))) return text;
+  const keepLines = lines.filter((line, index) => !consumed.has(index));
+  while (keepLines.length && !keepLines[0].trim()) keepLines.shift();
+  const valueFor = label => values.get(label) || 'NIL';
+  const header = [
+    `Name: ${valueFor('Name')}    Age/Gender: ${valueFor('Age/Gender')}    UHID: ${valueFor('UHID')}    IP No.: ${valueFor('IP No.')}`,
+    `Address: ${valueFor('Address')}`,
+    `Consultant: ${valueFor('Consultant')}    DOA: ${valueFor('DOA')}    DOD: ${valueFor('DOD')}`
+  ].join('\n');
+  return `${header}\n\n${keepLines.join('\n')}`.trim();
 }
 
 function normalizeNumberedSectionHeadings(text){
