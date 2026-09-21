@@ -221,6 +221,7 @@
     color:var(--muted);
     font:700 12px/1.35 'Inter',sans-serif;
   }
+  .mobile-list-btn,
   .mobile-home-btn{
     display:none;
     border:0;
@@ -417,7 +418,7 @@
   .continuation-dock-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:move; }
   .continuation-title{ display:inline-flex; align-items:center; gap:8px; color:#FF514A; font-size:13px; font-weight:900; }
   .continuation-title::before{ content:''; width:7px; height:7px; border-radius:999px; background:#FF514A; box-shadow:0 0 0 4px rgba(255,81,74,.1); }
-  .continuation-close{ width:28px; height:28px; border:0; border-radius:8px; background:#2F2F32; color:#F7F7FB; cursor:pointer; font-size:18px; line-height:1; }
+  .continuation-close{ align-items:center; justify-content:center; min-width:64px; height:30px; padding:0 10px; border:0; border-radius:8px; background:#2F2F32; color:#F7F7FB; cursor:pointer; font-size:12px; font-weight:900; line-height:1; }
   .continuation-body{ display:grid; grid-template-rows:auto auto auto auto auto; justify-items:center; align-content:center; gap:10px; min-height:0; }
   .continuation-level{ width:76%; height:30px; display:grid; grid-template-columns:repeat(28,1fr); gap:3px; align-items:end; padding:1px 0; }
   .continuation-level span{ height:4px; border-radius:999px 999px 3px 3px; background:rgba(255,81,74,.22); opacity:.65; transition:height .08s linear, background .08s linear, opacity .08s linear; }
@@ -1687,7 +1688,7 @@
       top:0; left:0; right:0;
       z-index:60;
       height:52px;
-      display:grid;
+      display:none;
       grid-template-columns:52px 1fr;
       align-items:center;
       padding:0 max(10px,env(safe-area-inset-right)) 0 max(10px,env(safe-area-inset-left));
@@ -1704,6 +1705,21 @@
       cursor:pointer;
       pointer-events:auto;
     }
+    .mobile-topbar-actions{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex:0 0 auto;
+      padding-left:0;
+    }
+    .mobile-list-btn,
+    .mobile-home-btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:38px;
+      padding:9px 14px;
+    }
     .mobile-menu-btn span,.mobile-menu-btn span::before,.mobile-menu-btn span::after{
       content:'';
       display:block;
@@ -1715,7 +1731,6 @@
     .mobile-menu-btn span::before{ transform:translateY(-8px); }
     .mobile-menu-btn span::after{ transform:translateY(5.5px); }
     .mobile-title{ display:none; }
-    .mobile-home-btn{ display:inline-flex; align-items:center; justify-content:center; }
     .mobile-backdrop{
       position:fixed;
       inset:0;
@@ -1833,21 +1848,17 @@
       display:none !important;
     }
     .mobile-visit-row{
-      display:flex;
+      display:flex !important;
       align-items:center;
       justify-content:space-between;
       gap:6px;
       min-height:52px;
-      padding:6px 6px 6px 52px;
+      padding:6px 6px 6px 10px;
       border-bottom:1px solid var(--border);
       background:#fff;
     }
-    .mobile-visit-row .mobile-home-btn{
-      margin-left:0;
-      flex:0 0 auto;
-    }
     .mobile-visit-row .visit-toggle{
-      display:flex;
+      display:none;
       height:40px;
       padding:4px;
       border:0;
@@ -1899,7 +1910,7 @@
       overflow-y:auto;
       -webkit-overflow-scrolling:touch;
       overscroll-behavior:contain;
-      padding:0 0 96px;
+      padding:0 0 58px;
       background:#F6F7F5;
     }
     .app.voice-dock-open .main-scroll{
@@ -2010,10 +2021,10 @@
       font-size:11px;
     }
     .continuation-close{
-      width:24px;
-      height:24px;
+      min-width:58px;
+      height:26px;
       border-radius:7px;
-      font-size:16px;
+      font-size:11px;
     }
     .continuation-body{
       grid-template-rows:auto auto auto auto;
@@ -2065,11 +2076,12 @@
       position:fixed;
       left:0; right:0; bottom:0;
       z-index:55;
-      height:76px;
+      height:42px;
       display:grid;
       grid-template-columns:repeat(3,1fr);
       align-items:center;
-      padding:8px 18px max(8px,env(safe-area-inset-bottom));
+      gap:8px;
+      padding:4px 12px max(4px,env(safe-area-inset-bottom));
       border-top:1px solid var(--border);
       background:rgba(255,255,255,.97);
       backdrop-filter:blur(12px);
@@ -2085,28 +2097,30 @@
       padding:15px 16px;
     }
     .mobile-action{
-      width:48px;height:48px;
+      width:100%;height:32px;
       justify-self:center;
-      border:0;
-      border-radius:16px;
-      background:transparent;
+      border:1px solid var(--border);
+      border-radius:10px;
+      background:#fff;
       color:#565552;
-      display:grid;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:13px;
+      font-weight:900;
       place-items:center;
       cursor:pointer;
     }
     .mobile-action.danger{ color:#A92E24; }
     .mobile-action.primary{
-      width:54px;height:54px;
-      margin-top:0;
-      border-radius:50%;
-      background:#D7383A;
+      background:#1D6B5B;
+      border-color:#1D6B5B;
       color:#fff;
-      box-shadow:0 12px 28px -14px rgba(215,56,58,.75);
+      box-shadow:none;
     }
     .continue-note-btn{
       right:18px;
-      bottom:92px;
+      bottom:58px;
       width:58px;
       height:58px;
     }
@@ -2196,7 +2210,10 @@
       </div>
       <div class="user-email" id="userEmail"></div>
       <div class="mobile-visit-row">
-        <button class="mobile-home-btn" id="mobileHomeBtn" type="button">Home</button>
+        <div class="mobile-topbar-actions">
+          <button class="mobile-list-btn" id="mobileListBtn" type="button">List</button>
+          <button class="mobile-home-btn" id="mobileHomeBtn" type="button">Home</button>
+        </div>
         <div class="visit-toggle" id="mobileVisitToggle" aria-label="Mobile visit type">
           <button class="visit-toggle-btn active" data-mobile-visit-type="OP">OP</button>
           <button class="visit-toggle-btn" data-mobile-visit-type="IP">IP</button>
@@ -2287,13 +2304,13 @@
 
   <nav class="mobile-bottom-actions" aria-label="Note actions">
     <button class="mobile-action" id="mobileCopyBtn" aria-label="Copy note">
-      <svg width="27" height="27" viewBox="0 0 24 24" fill="none"><rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.9"/><path d="M4 15V6a2 2 0 0 1 2-2h9" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+      Copy
     </button>
     <button class="mobile-action danger" id="mobileDeleteBtn" aria-label="Delete note">
-      <svg width="27" height="27" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Delete
     </button>
-    <button class="mobile-action" id="mobileSaveBtn" aria-label="Save note">
-      <svg width="29" height="29" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17l9-10" stroke="#0A781F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <button class="mobile-action primary" id="mobileSaveBtn" aria-label="Save note">
+      Save
     </button>
   </nav>
   <div class="mobile-template-sheet" id="mobileTemplateSheet" aria-label="Select note template">
@@ -2311,7 +2328,7 @@
 <div class="continuation-dock" id="continuationDock" aria-live="polite">
   <div class="continuation-dock-head" id="continuationDockHandle">
     <div class="continuation-title">Continue dictation</div>
-    <button class="continuation-close" id="continuationCloseBtn" aria-label="Close continuation dictation">&times;</button>
+    <button class="continuation-close" id="continuationCloseBtn" aria-label="Close dictation panel">Close</button>
   </div>
   <div class="continuation-body">
     <div class="continuation-level" id="continuationLevel" aria-label="Voice activity"></div>
@@ -2650,6 +2667,7 @@ const recordBtn = document.getElementById('recordBtn');
 const recordSub = document.getElementById('recordSub');
 const appShell = document.getElementById('appShell');
 const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+const mobileListBtn = document.getElementById('mobileListBtn');
 const mobileHomeBtn = document.getElementById('mobileHomeBtn');
 const mobileBackdrop = document.getElementById('mobileBackdrop');
 const mobileCopyBtn = document.getElementById('mobileCopyBtn');
@@ -3604,6 +3622,9 @@ function renderOpPatientTimeline(key, entryId = selectedOpTimelineEntryId || 'al
           </div>
         </div>
         ${renderedNotes}
+        <div class="generated-note-actions">
+          <button class="mobile-review-inline ${selectedRecordCanContinue() ? 'visible' : ''}" id="mobileInlineReviewBtn" aria-label="Add on dictation for selected note">Add On</button>
+        </div>
       </section>
     </div>`;
   mainScroll.querySelectorAll('[data-op-all-entry-editor]').forEach(editor => {
@@ -3626,6 +3647,7 @@ function renderOpPatientTimeline(key, entryId = selectedOpTimelineEntryId || 'al
     });
   });
   wireStackedEntryArrows();
+  document.getElementById('mobileInlineReviewBtn')?.addEventListener('click', openContinuationDock);
 }
 
 function openOpTimelineForRecord(record, entryId = null){
@@ -4629,6 +4651,7 @@ onAuthStateChanged(auth,user => {
     loginScreen.classList.add('hidden');
     appShell.classList.add('authenticated');
     userEmail.textContent = '';
+    homeModeActive = true;
     userProfileUnsubscribe = onSnapshot(doc(db,'users',user.uid), snapshot => {
       const profile = snapshot.data() || {};
       userEmail.textContent = displayCredentialName(profile.credentialName) || '';
@@ -6285,7 +6308,7 @@ function renderContinuationDock(){
   continuationPauseBtn.style.display = continuationState.hasStarted && !hasSavedAudio ? 'grid' : 'none';
   continuationExtendBtn.style.display = continuationState.hasStarted && !hasSavedAudio ? 'grid' : 'none';
   continuationStopBtn.style.display = continuationState.hasStarted ? 'grid' : 'none';
-  continuationCloseBtn.style.display = continuationState.mode === 'new' ? 'none' : 'grid';
+  continuationCloseBtn.style.display = continuationState.open ? 'inline-flex' : 'none';
   continuationPauseBtn.innerHTML = continuationState.recording
     ? '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>'
     : '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7L8 5Z"/></svg>';
@@ -6407,11 +6430,14 @@ function openNewVoiceDock(){
 
 function closeContinuationDock({releaseMic = true} = {}){
   continuationState.open = false;
+  continuationState.mode = 'continue';
+  continuationState.targetId = null;
   continuationState.recording = false;
   continuationState.paused = false;
   continuationState.processing = false;
   continuationState.hasStarted = false;
   continuationState.audioBlob = null;
+  continuationState.status = 'Ready';
   continuationState.documentMode = null;
   continuationState.targetOwnerUid = null;
   if (releaseMic){
@@ -6419,6 +6445,36 @@ function closeContinuationDock({releaseMic = true} = {}){
     stopMediaTracks();
   }
   renderContinuationDock();
+}
+
+async function closeContinuationDockWithConfirmation(){
+  if (!continuationState.open) return;
+  const isNewDraft = continuationState.mode === 'new';
+  const targetId = continuationState.targetId;
+  const targetOwnerUid = continuationState.targetOwnerUid;
+  const firstMessage = isNewDraft
+    ? 'Close this voice draft? The draft and any unsent recording will be discarded.'
+    : 'Close this Add On recording panel? Any unsent recording will be discarded.';
+  if (!window.confirm(firstMessage)) return;
+  if (!window.confirm('Please confirm again to close.')) return;
+  stopVoiceTimer();
+  stopMediaTracks();
+  pendingNewVoiceDockId = isNewDraft ? null : pendingNewVoiceDockId;
+  if (isNewDraft && targetId && targetOwnerUid && currentUser && targetOwnerUid === currentUser.uid){
+    const draft = records.find(record => recordMatchesOwnerAndId(record, targetOwnerUid, targetId)) || {firestoreId:targetId, ownerUid:targetOwnerUid};
+    try{
+      await deleteDoc(noteDocRef(draft));
+    }catch(error){
+      console.warn('Unable to discard voice draft:', error);
+    }
+    const activeWasDraft = activeIndex !== null && recordMatchesOwnerAndId(records[activeIndex], targetOwnerUid, targetId);
+    records = records.filter(record => !recordMatchesOwnerAndId(record, targetOwnerUid, targetId));
+    allRecords = allRecords.filter(record => !recordMatchesOwnerAndId(record, targetOwnerUid, targetId));
+    if (activeWasDraft) activeIndex = null;
+    renderEntries();
+  }
+  closeContinuationDock({releaseMic:false});
+  if (isNewDraft) showHomeScreen();
 }
 
 async function startContinuationRecording(){
@@ -6913,7 +6969,7 @@ function wireContinuationDock(){
   continuationPauseBtn.addEventListener('click', pauseResumeContinuationRecording);
   continuationExtendBtn.addEventListener('click', extendContinuationRecording);
   continuationStopBtn.addEventListener('click', stopAndAppendContinuation);
-  continuationCloseBtn.addEventListener('click', () => closeContinuationDock());
+  continuationCloseBtn.addEventListener('click', closeContinuationDockWithConfirmation);
   continuationDockHandle.addEventListener('pointerdown', dragContinuationDock);
   continuationModeBar.addEventListener('click', event => {
     const button = event.target.closest('[data-new-voice-mode]');
@@ -7758,6 +7814,7 @@ searchScopeToggle.addEventListener('click', event => {
   setSearchScope(button.dataset.searchScope);
 });
 mobileMenuBtn.addEventListener('click', openMobileSidebar);
+mobileListBtn.addEventListener('click', openMobileSidebar);
 topbarPatient.addEventListener('click', openMobileSidebar);
 topbarPatient.addEventListener('keydown', event => {
   if (event.key === 'Enter' || event.key === ' '){
