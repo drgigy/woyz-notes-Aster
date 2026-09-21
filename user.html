@@ -1798,6 +1798,17 @@
       padding:0 0 96px;
       background:#F6F7F5;
     }
+    .app.voice-dock-open .main-scroll{
+      padding-bottom:calc(236px + env(safe-area-inset-bottom));
+    }
+    .app.voice-dock-open .generated-note-card,
+    .app.voice-dock-open .note-wrap,
+    .app.voice-dock-open .timeline-wrap,
+    .app.voice-dock-open .voice-wrap,
+    .app.voice-dock-open .processing-wrap,
+    .app.voice-dock-open .empty-state{
+      padding-bottom:calc(174px + env(safe-area-inset-bottom));
+    }
     .generated-note,.generated-note-card{
       min-height:0;
       background:transparent;
@@ -5914,6 +5925,7 @@ function renderContinuationDock(){
     ? 'Voice note draft'
     : continuationState.documentMode || 'Continue dictation';
   continuationDock.classList.toggle('visible', continuationState.open);
+  appShell.classList.toggle('voice-dock-open', continuationState.open);
   continuationStartBtn.style.display = continuationState.hasStarted ? 'none' : 'grid';
   continuationPauseBtn.style.display = continuationState.hasStarted && !hasSavedAudio ? 'grid' : 'none';
   continuationExtendBtn.style.display = continuationState.hasStarted && !hasSavedAudio ? 'grid' : 'none';
