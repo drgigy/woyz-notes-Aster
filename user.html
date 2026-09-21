@@ -1688,7 +1688,7 @@
       z-index:60;
       height:52px;
       display:grid;
-      grid-template-columns:52px auto 1fr;
+      grid-template-columns:52px 1fr;
       align-items:center;
       padding:0 max(10px,env(safe-area-inset-right)) 0 max(10px,env(safe-area-inset-left));
       pointer-events:none;
@@ -1841,6 +1841,10 @@
       padding:6px 6px 6px 52px;
       border-bottom:1px solid var(--border);
       background:#fff;
+    }
+    .mobile-visit-row .mobile-home-btn{
+      margin-left:0;
+      flex:0 0 auto;
     }
     .mobile-visit-row .visit-toggle{
       display:flex;
@@ -2136,7 +2140,7 @@
   <div class="mobile-app-bar" aria-hidden="false">
     <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open records"><span></span></button>
     <div class="mobile-title">WOYZ</div>
-    <button class="mobile-home-btn" id="mobileHomeBtn" type="button">Home</button>
+    <div></div>
   </div>
   <div class="mobile-backdrop" id="mobileBackdrop"></div>
 
@@ -2192,6 +2196,7 @@
       </div>
       <div class="user-email" id="userEmail"></div>
       <div class="mobile-visit-row">
+        <button class="mobile-home-btn" id="mobileHomeBtn" type="button">Home</button>
         <div class="visit-toggle" id="mobileVisitToggle" aria-label="Mobile visit type">
           <button class="visit-toggle-btn active" data-mobile-visit-type="OP">OP</button>
           <button class="visit-toggle-btn" data-mobile-visit-type="IP">IP</button>
