@@ -635,6 +635,7 @@
   .date-step,.date-today{ height:38px; border:1px solid var(--border); border-radius:10px; background:#EEF3F7; color:#263444; cursor:pointer; font-weight:800; }
   .date-step{ width:38px; font-size:23px; line-height:1; }
   .date-today{ display:none; padding:0 13px; background:var(--teal); border-color:var(--teal-deep); color:#fff; font-size:13px; box-shadow:0 4px 10px -6px var(--teal-deep); }
+  .date-display{ display:none; }
   .date-input{ height:38px; width:142px; border:1px solid #D8E1E7; border-radius:10px; background:#fff; color:#17212B; padding:0 10px; font:700 13px 'Inter',sans-serif; }
 
   /* ---------- AUTHORIZATION MODAL ---------- */
@@ -1391,31 +1392,6 @@
     color:var(--muted);
     cursor:default;
   }
-  .entry-arrow-btn{
-    width:46px;
-    height:46px;
-    border:1.5px solid #C6D6D0;
-    border-radius:999px;
-    background:#fff;
-    color:var(--teal);
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    margin:22px auto 0;
-    font:900 22px/1 'Inter',sans-serif;
-    cursor:pointer;
-    box-shadow:0 10px 24px -18px rgba(31,95,82,.75);
-    transition:transform .15s ease, border-color .15s ease, background .15s ease;
-  }
-  .entry-arrow-btn:hover{
-    transform:translateY(-1px);
-    border-color:var(--teal);
-    background:#F6FBF9;
-  }
-  .entry-arrow-row{
-    display:flex;
-    justify-content:center;
-  }
   .generated-note-actions{
     display:flex;
     justify-content:center;
@@ -1424,8 +1400,7 @@
     flex-wrap:wrap;
     margin-top:20px;
   }
-  .generated-note-actions .mobile-review-inline,
-  .generated-note-actions .entry-arrow-btn{
+  .generated-note-actions .mobile-review-inline{
     margin:0;
   }
 
@@ -1982,7 +1957,7 @@
       justify-content:space-between;
       gap:6px;
       min-height:52px;
-      padding:6px 150px 6px 10px;
+      padding:6px 158px 6px 10px;
       border-bottom:1px solid var(--border);
       background:#fff;
     }
@@ -2010,22 +1985,23 @@
     .date-nav{
       position:absolute;
       right:6px;
-      bottom:8px;
+      bottom:7px;
       margin-left:0;
       gap:3px;
     }
     .date-step{
-      width:24px;
-      height:32px;
+      width:30px;
+      height:38px;
       border:1px solid #DDE2DC;
       border-radius:8px;
       background:#fff;
       font-size:24px;
       color:#575757;
     }
-    .date-input{
-      width:96px;
-      height:32px;
+    .date-display{
+      display:block;
+      width:86px;
+      height:38px;
       border:1px solid #DDE2DC;
       border-radius:8px;
       background:#fff;
@@ -2033,6 +2009,14 @@
       font:800 12px 'Inter',sans-serif;
       color:#555;
       text-align:center;
+      cursor:pointer;
+    }
+    .date-input{
+      position:absolute;
+      width:1px;
+      height:1px;
+      opacity:0;
+      pointer-events:none;
     }
     .date-input::-webkit-calendar-picker-indicator{ display:none; }
     .date-today{ display:none; }
@@ -2113,12 +2097,6 @@
       box-shadow:0 12px 28px -15px rgba(31,95,82,.8);
     }
     .mobile-review-inline.visible{ display:inline-flex; align-items:center; justify-content:center; }
-    .entry-arrow-btn{
-      width:44px;
-      height:44px;
-      min-width:44px;
-      font-size:21px;
-    }
     .generated-note-actions{
       margin-top:18px;
       padding-bottom:8px;
@@ -2417,6 +2395,7 @@
       <div class="date-nav" id="dateNav" aria-label="Visit date navigation">
         <button class="date-today" id="todayBtn" title="Jump to today"></button>
         <button class="date-step" id="previousDateBtn" aria-label="Previous day">&lsaquo;</button>
+        <button class="date-display" id="visitDateDisplay" type="button" aria-label="Choose visit date"></button>
         <input class="date-input" id="visitDateInput" type="date" aria-label="Visit date">
         <button class="date-step" id="nextDateBtn" aria-label="Next day">&rsaquo;</button>
       </div>
@@ -2840,6 +2819,7 @@ const mmseScoreValue = document.getElementById('mmseScoreValue');
 const mmseSections = document.getElementById('mmseSections');
 const previousDateBtn = document.getElementById('previousDateBtn');
 const nextDateBtn = document.getElementById('nextDateBtn');
+const visitDateDisplay = document.getElementById('visitDateDisplay');
 const visitDateInput = document.getElementById('visitDateInput');
 const visitToggle = document.getElementById('visitToggle');
 const mobileVisitToggle = document.getElementById('mobileVisitToggle');
@@ -3308,13 +3288,7 @@ function renderOpPatientEntries(){
 renderEntries();
 
 function patientSearchKey(record){
-  const identity = patientIdentity(record);
-  const uhid = normalizePatientToken(identity.uhid);
-  if (uhid && uhid !== 'nil') return `uhid:${uhid}`;
-  const name = normalizePatientToken(identity.name || record?.name);
-  const sex = normalizePatientToken(identity.sex);
-  const age = normalizePatientToken(identity.age);
-  return `name:${name}|sex:${sex}|age:${age}`;
+  return recordLocalKey(record) || `${noteOwnerUid(record) || 'unknown'}:${record?.firestoreId || record?.createdAt || record?.createdAtLabel || record?.heading || ''}`;
 }
 
 function normalizePatientToken(value){
@@ -3547,52 +3521,6 @@ function currentEditableRecord(){
   return selectedOpTimelineRecord() || (activeIndex !== null ? records[activeIndex] : null);
 }
 
-function visibleRecordIndexesForSelectedDay(){
-  return records
-    .map((record, index) => ({record, index}))
-    .filter(item => recordMatchesSearch(item.record))
-    .map(item => item.index);
-}
-
-function nextVisibleRecordIndex(){
-  if (activeIndex === null) return null;
-  const visibleIndexes = visibleRecordIndexesForSelectedDay();
-  const currentPosition = visibleIndexes.indexOf(activeIndex);
-  return currentPosition >= 0 ? (visibleIndexes[currentPosition + 1] ?? null) : null;
-}
-
-function entryArrowButtonHtml({direction = 'down', label = 'Go to next entry'} = {}){
-  const symbol = direction === 'up' ? '&#8593;' : '&#8595;';
-  return `<button class="entry-arrow-btn" type="button" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">${symbol}</button>`;
-}
-
-function handleSelectedEntryArrow(){
-  const targetIndex = nextVisibleRecordIndex();
-  if (targetIndex !== null){
-    selectEntry(targetIndex);
-    requestAnimationFrame(() => mainScroll.scrollTo({top:0, behavior:'smooth'}));
-    return;
-  }
-  mainScroll.scrollTo({top:0, behavior:'smooth'});
-}
-
-function wireStackedEntryArrows(){
-  const entries = Array.from(mainScroll.querySelectorAll('.timeline-entry, .op-all-entry'));
-  entries.forEach((entry, index) => {
-    const button = entry.querySelector('.entry-arrow-btn');
-    if (!button) return;
-    button.addEventListener('click', event => {
-      event.stopPropagation();
-      const target = entries[index + 1];
-      if (target){
-        target.scrollIntoView({behavior:'smooth', block:'start'});
-        return;
-      }
-      mainScroll.scrollTo({top:0, behavior:'smooth'});
-    });
-  });
-}
-
 function groupedPatientSearchResults(){
   const queryText = recordSearchTerm.trim().toLowerCase();
   const groups = new Map();
@@ -3710,14 +3638,10 @@ function renderPatientTimeline(key){
   dischargeBtn.classList.remove('visible');
   const renderedNotes = timelineRecords.map((record, index) => {
     const displayText = anonymizeTextForRecord(displayNoteTextForRecord(record, record.transcription || ''), record);
-    const lastEntry = index === timelineRecords.length - 1;
     return `
       <article class="timeline-entry">
         <h2 class="timeline-entry-title">${escapeHtml(timelineTitleForRecord(record))}</h2>
         <div class="timeline-note">${richNoteHtml(displayText)}</div>
-        <div class="entry-arrow-row">
-          ${entryArrowButtonHtml({direction:lastEntry ? 'up' : 'down', label:lastEntry ? 'Back to top' : 'Go to next entry'})}
-        </div>
       </article>
     `;
   }).join('');
@@ -3735,7 +3659,6 @@ function renderPatientTimeline(key){
       ${renderedNotes}
     </div>`;
   document.getElementById('addTimelinePatientTodayBtn')?.addEventListener('click', () => addTimelinePatientToToday(latest));
-  wireStackedEntryArrows();
 }
 
 function renderOpPatientTimeline(key, entryId = selectedOpTimelineEntryId || 'all'){
@@ -3787,14 +3710,10 @@ function renderOpPatientTimeline(key, entryId = selectedOpTimelineEntryId || 'al
   const renderedNotes = timelineRecords.map((record, index) => {
     const displayText = displayNoteTextForRecord(record, record.transcription || '');
     const entryTitle = timelineRecords.length > 1 ? `<h2 class="op-all-entry-title">${escapeHtml(timelineTitleForRecord(record))}</h2>` : '';
-    const lastEntry = index === timelineRecords.length - 1;
     return `
       <article class="op-all-entry">
         ${entryTitle}
         <div class="op-all-entry-editor note-editor" data-op-all-entry-editor="${escapeHtml(record.firestoreId)}" data-op-all-entry-owner="${escapeHtml(noteOwnerUid(record) || '')}" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" aria-label="Editable ${escapeHtml(opTimelineEntryLabel(record))}">${richNoteHtml(displayText)}</div>
-        <div class="entry-arrow-row">
-          ${entryArrowButtonHtml({direction:lastEntry ? 'up' : 'down', label:lastEntry ? 'Back to top' : 'Go to next entry'})}
-        </div>
       </article>
     `;
   }).join('');
@@ -3831,7 +3750,6 @@ function renderOpPatientTimeline(key, entryId = selectedOpTimelineEntryId || 'al
       document.execCommand('insertText', false, event.clipboardData?.getData('text/plain') || '');
     });
   });
-  wireStackedEntryArrows();
   document.getElementById('mobileInlineReviewBtn')?.addEventListener('click', openContinuationDock);
 }
 
@@ -3875,14 +3793,10 @@ function renderIpPatientTimeline(key, date = selectedIpTimelineDate || dateInput
   const renderedNotes = sectionsToRender.map((section, index) => {
     const displayText = anonymizeTextForRecord(section.text, section.record);
     const reviewAttribute = section.type === 'review' ? ` data-ip-timeline-review="${section.reviewIndex}"` : '';
-    const lastEntry = index === sectionsToRender.length - 1;
     return `
       <article class="timeline-entry" data-ip-timeline-note="${escapeHtml(section.record.firestoreId)}" data-ip-timeline-owner="${escapeHtml(noteOwnerUid(section.record) || '')}"${reviewAttribute} tabindex="0" role="button" aria-label="Open ${escapeHtml(section.title)}">
         <h2 class="timeline-entry-title">${escapeHtml(section.title)}</h2>
         <div class="timeline-note">${richNoteHtml(displayText)}</div>
-        <div class="entry-arrow-row">
-          ${entryArrowButtonHtml({direction:lastEntry ? 'up' : 'down', label:lastEntry ? 'Back to top' : 'Go to next entry'})}
-        </div>
       </article>
     `;
   }).join('');
@@ -3917,7 +3831,6 @@ function renderIpPatientTimeline(key, date = selectedIpTimelineDate || dateInput
       openEntry();
     });
   });
-  wireStackedEntryArrows();
 }
 
 function openIpTimelineDate(key, date = selectedIpTimelineDate || dateInputValue(selectedVisitDate)){
@@ -4793,6 +4706,7 @@ function updateContinueNoteButton(){
   const record = records[activeIndex];
   const showVoiceModes = Boolean(record?.voiceDraft);
   continueNoteBtn.classList.toggle('visible', canContinue);
+  topbarContinueBtn.style.display = canContinue ? '' : 'none';
   topbarContinueBtn.disabled = !canContinue || continuationState.hasStarted || continuationState.processing;
   topbarContinueBtn.classList.toggle('inactive', !canContinue);
   topbarDocActions.classList.toggle('visible', Boolean(currentUser));
@@ -5091,12 +5005,8 @@ function selectEntry(i,{preserveDirtyEditor = false} = {}){
           </div>
         `).join('')}
       </div>
-      <div class="entry-arrow-row">
-        ${entryArrowButtonHtml({direction:nextVisibleRecordIndex() === null ? 'up' : 'down', label:nextVisibleRecordIndex() === null ? 'Back to top' : 'Go to next entry'})}
-      </div>
     </div>
   `;
-  mainScroll.querySelector('.entry-arrow-btn')?.addEventListener('click', handleSelectedEntryArrow);
 }
 
 function voiceMarkup(){
@@ -6209,16 +6119,13 @@ function renderGeneratedNote(draft){
         <div class="note-editor ${anonymizeEnabled ? 'anonymized' : ''}" id="generatedNoteEditor" data-note-id="${escapeHtml(draft.firestoreId || '')}" data-note-owner="${escapeHtml(noteOwnerUid(draft) || '')}" contenteditable="${canEdit ? 'true' : 'false'}" spellcheck="true" role="textbox" aria-multiline="true" aria-label="Editable generated note">${richNoteHtml(displayText)}</div>
         <div class="generated-note-actions">
           <button class="mobile-review-inline ${selectedRecordCanContinue() ? 'visible' : ''}" id="mobileInlineReviewBtn" aria-label="Add on dictation for selected note">Add On</button>
-          ${entryArrowButtonHtml({direction:nextVisibleRecordIndex() === null ? 'up' : 'down', label:nextVisibleRecordIndex() === null ? 'Back to top' : 'Go to next entry'})}
         </div>
       </section>
     </div>`;
   const editor = document.getElementById('generatedNoteEditor');
   const mobileInlineReviewBtn = document.getElementById('mobileInlineReviewBtn');
-  const entryArrowBtn = mainScroll.querySelector('.entry-arrow-btn');
   resizeNoteEditor(editor);
   if (mobileInlineReviewBtn) mobileInlineReviewBtn.addEventListener('click', openContinuationDock);
-  if (entryArrowBtn) entryArrowBtn.addEventListener('click', handleSelectedEntryArrow);
   if (canEdit){
     ['focus','keyup','mouseup','touchend'].forEach(eventName => {
       editor.addEventListener(eventName, captureEditorSelection);
@@ -6601,7 +6508,9 @@ function renderContinuationDock(){
 
 function selectedRecordCanContinue(){
   const record = currentEditableRecord() || opTimelineWorkingRecord();
-  return Boolean(record && !record.voiceDraft && (record.transcription || record.kind === 'generated'));
+  if (!record || record.voiceDraft || !(record.transcription || record.kind === 'generated')) return false;
+  const mode = normalizedEntryMode(record).toLowerCase();
+  return mode === 'visit note' || mode === 'discharge summary';
 }
 
 function newVoiceTemplateForMode(mode, visitType = selectedVisitType){
@@ -7984,8 +7893,16 @@ function dateInputValue(date){
   return `${year}-${month}-${day}`;
 }
 
+function compactDateLabel(date){
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = String(date.getFullYear()).slice(-2);
+  return `${day}/${month}/${year}`;
+}
+
 function updateDateNavigation(){
   visitDateInput.value = dateInputValue(selectedVisitDate);
+  visitDateDisplay.textContent = compactDateLabel(selectedVisitDate);
   todayBtn.textContent = selectedVisitDate.toLocaleDateString('en-US',{weekday:'long'});
 }
 
@@ -8004,6 +7921,14 @@ function moveVisitDate(days){
 
 previousDateBtn.addEventListener('click', () => moveVisitDate(-1));
 nextDateBtn.addEventListener('click', () => moveVisitDate(1));
+visitDateDisplay.addEventListener('click', () => {
+  if (typeof visitDateInput.showPicker === 'function'){
+    visitDateInput.showPicker();
+  }else{
+    visitDateInput.focus();
+    visitDateInput.click();
+  }
+});
 todayBtn.addEventListener('click', () => {
   selectedVisitDate = new Date();
   if (searchScope === 'all'){
