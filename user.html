@@ -2197,7 +2197,7 @@
       font-size:10.5px;
     }
     .processing-wrap{ padding:24px 20px 110px; }
-    .empty-state{ padding:40px 28px 110px; min-height:calc(100dvh - 210px); }
+    .empty-state{ padding:18px 24px 58px; min-height:calc(100dvh - 112px); justify-content:flex-start; }
     .mobile-bottom-actions{
       position:fixed;
       left:0; right:0; bottom:0;
@@ -2214,21 +2214,46 @@
     }
     .home-template-grid{
       grid-template-columns:1fr;
-      gap:10px;
-      margin-top:18px;
+      gap:7px;
+      margin-top:8px;
+    }
+    .home-brand-logo{
+      width:min(290px,86vw);
+      margin-bottom:8px;
+    }
+    .home-quick-actions{
+      gap:8px;
+      margin-top:6px;
+    }
+    .home-quick-btn{
+      min-height:42px;
+      border-radius:12px;
+      font-size:15px;
+    }
+    .home-action-status{
+      min-height:18px;
+      margin-top:4px;
+      font-size:12px;
     }
     .home-template-card{
-      min-height:64px;
-      border-radius:14px;
-      padding:14px 16px;
+      min-height:46px;
+      border-radius:12px;
+      padding:9px 14px;
       display:flex;
       align-items:center;
       justify-content:center;
       text-align:center;
     }
+    .home-template-title{
+      font-size:15px;
+      line-height:1.1;
+      margin-bottom:0;
+    }
     .home-tools-btn{
-      min-height:64px;
-      padding:14px 16px;
+      min-height:46px;
+      padding:9px 14px;
+      border-radius:12px;
+      font-size:15px;
       display:flex;
       align-items:center;
       justify-content:center;
