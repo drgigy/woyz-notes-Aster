@@ -1034,7 +1034,6 @@ function renderAdminTimelineMenu(){
 
 function renderAdminAllEntries(seedNote){
   const notes = orderedPatientTimelineNotes(seedNote);
-  const patientName = notePatientName(seedNote);
   const rendered = notes.map(note => {
     const text = displayNoteTextForNote(note, note.data.transcription || '');
     const layout = prescriptionLayoutForNote(note);
@@ -1046,8 +1045,6 @@ function renderAdminAllEntries(seedNote){
     `;
   }).join('');
   mainScroll.innerHTML = `
-    <h1 class="note-title">${escapeHtml(patientName)}</h1>
-    <div class="admin-all-count">${notes.length} ${notes.length === 1 ? 'entry' : 'entries'} · All entries</div>
     <div class="admin-all-entries">${rendered}</div>
   `;
 }
