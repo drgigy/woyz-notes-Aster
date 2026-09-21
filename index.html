@@ -46,6 +46,7 @@
   .admin-brand-dot{ width:30px; height:30px; border-radius:50%; background:#F45155; border:8px solid #452126; }
   .admin-brand-word{ font-size:24px; font-weight:800; color:var(--ink); letter-spacing:0; }
   .sidebar-section-label{ color:#7C847C; font-weight:800; font-size:11px; letter-spacing:.09em; text-transform:uppercase; margin:10px 4px 12px; }
+  #adminVisitToggle{ display:none !important; }
   .sidebar .visit-toggle{ height:44px; margin:0 4px 16px; justify-content:center; }
   .sidebar .visit-toggle-btn{ height:34px; flex:1; font-size:13px; }
   .entry-list{ flex:1; min-height:0; display:flex; flex-direction:column; gap:8px; overflow:auto; overscroll-behavior:contain; padding-right:2px; }
@@ -783,12 +784,7 @@ function createPrintWindow(){
 }
 
 function noteMatchesSelectedScope(note, selectedDate = dateInputValue(selectedVisitDate)){
-  if (noteVisitType(note) !== selectedVisitType) return false;
-  if (selectedVisitType !== 'IP') return note.data?.visitDate === selectedDate;
-  const admissionDate = note.data?.admissionDate || note.data?.visitDate || selectedDate;
-  const dischargeDate = note.data?.dischargeDate || null;
-  if (admissionDate > selectedDate) return false;
-  return !dischargeDate || dischargeDate >= selectedDate;
+  return noteVisitType(note) === 'OP' && note.data?.visitDate === selectedDate;
 }
 
 function canToggleDischargeNote(note){
@@ -819,7 +815,7 @@ function updateDateNavigation(){
 
 function latestDateForSelectedType(){
   return allNotes
-    .filter(note => noteVisitType(note) === selectedVisitType)
+    .filter(note => noteVisitType(note) === 'OP')
     .filter(note => note.data?.deleted !== true)
     .map(note => note.data?.visitDate)
     .filter(Boolean)
@@ -857,7 +853,7 @@ function updateVisitToggle(){
 
 function noteMeta(note){
   const patient = note.data.patientData || {};
-  const pieces = [noteVisitType(note), userLabel(note.userId, 0)];
+  const pieces = [userLabel(note.userId, 0)];
   if (patient.uhid) pieces.push(`UHID ${patient.uhid}`);
   if (patient.sex) pieces.push(compactSex(patient.sex));
   if (patient.age) pieces.push(cleanAge(patient.age));
@@ -1057,12 +1053,13 @@ function renderAdminAllEntries(seedNote){
 }
 
 function renderSelectedNote(){
+  selectedVisitType = 'OP';
   const selectedUser = users.find(user => user.uid === selectedUserId);
   const notes = visibleNotes().filter(note => note.userId === selectedUserId);
   const dateNote = notes.find(item => item.id === selectedNoteId);
   const note = dateNote || selectedAdminNote();
   topbarTitle.textContent = selectedUser ? selectedUser.label : 'Admin notes';
-  topbarMeta.textContent = selectedUser ? `${selectedVisitType} · ${notes.length} note${notes.length === 1 ? '' : 's'}` : `Select a user · ${selectedVisitType}`;
+  topbarMeta.textContent = selectedUser ? `${notes.length} note${notes.length === 1 ? '' : 's'}` : 'Select a user';
   if (!selectedUser){
     showEmpty('No users yet', 'Notes will appear here after users save them.');
     return;
@@ -1329,7 +1326,7 @@ adminVisitDateInput.addEventListener('change', () => {
 adminVisitToggle.addEventListener('click', event => {
   const button = event.target.closest('[data-admin-visit-type]');
   if (!button) return;
-  selectedVisitType = button.dataset.adminVisitType === 'IP' ? 'IP' : 'OP';
+  selectedVisitType = 'OP';
   adminDateTouched = false;
   selectedUserId = null;
   selectedNoteId = null;
