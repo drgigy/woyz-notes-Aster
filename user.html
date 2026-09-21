@@ -48,7 +48,8 @@
   .login-screen{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:28px; background:linear-gradient(145deg,#F4F5F3,#EAF2EF); }
   .login-screen.hidden{ display:none; }
   .login-card{ width:min(420px,100%); background:#fff; border:1px solid var(--border); border-radius:22px; padding:34px; box-shadow:0 24px 65px -34px rgba(20,35,29,.48); }
-  .login-brand{ display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:27px; font-size:27px; font-weight:800; }
+  .login-brand{ display:flex; align-items:center; justify-content:center; margin-bottom:27px; }
+  .login-brand-logo{ display:block; width:min(320px,100%); height:auto; }
   .login-brand-pill{ display:inline-flex; align-items:center; gap:9px; padding:8px 16px 8px 10px; border:4px solid #F45155; border-radius:999px; background:#17171D; color:#fff; letter-spacing:1px; }
   .login-brand-dot{ width:27px; height:27px; border-radius:50%; background:#F45155; border:7px solid #452126; }
   .login-title{ margin:0 0 6px; font:600 27px 'Fraunces',serif; }
@@ -2276,7 +2277,7 @@
 
 <section class="login-screen" id="loginScreen">
   <form class="login-card" id="loginForm">
-    <div class="login-brand"><span class="login-brand-pill"><span class="login-brand-dot"></span>WOYZ</span><span>Notes</span></div>
+    <div class="login-brand"><img class="login-brand-logo" src="./icons/woyz-er-home.png" alt="WOYZ ER"></div>
     <h1 class="login-title">Sign in</h1>
     <label class="login-label" for="loginEmail">Email address</label>
     <input class="login-input" id="loginEmail" type="email" autocomplete="username" required>
