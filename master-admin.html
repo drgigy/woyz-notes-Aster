@@ -106,7 +106,7 @@
 
     <section class="panel">
       <h2 class="panel-title">Groups</h2>
-      <p class="panel-sub">These mappings control what each admin can see in admin.html.</p>
+      <p class="panel-sub">These mappings control what each admin can see in index.html.</p>
       <div class="groups" id="groupsList"></div>
     </section>
   </section>
@@ -404,7 +404,7 @@ if ('serviceWorker' in navigator) {
       refreshingForUpdate = true;
       window.location.reload();
     });
-    navigator.serviceWorker.register('./sw.js?v=168', {updateViaCache:'none'}).then(registration => {
+    navigator.serviceWorker.register('./sw.js?v=169', {updateViaCache:'none'}).then(registration => {
       registration.update();
     }).catch(error => {
       console.warn('Service worker registration failed:', error);

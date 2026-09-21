@@ -32,6 +32,7 @@ Replace `YOUR_PROJECT_ID` in `.firebaserc` before deployment. You can alternativ
 For GitHub Pages, commit at least:
 
 - `index.html`
+- `user.html`
 - `firebase-config.js`
 
 In Firebase Authentication settings, add the GitHub Pages hostname (for example, `username.github.io`) to **Authorized domains**.
