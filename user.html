@@ -121,6 +121,15 @@
   }
   .record-label{ text-align:left; }
   .mobile-doc-actions{ display:none; }
+  .visit-toggle,
+  .mobile-visit-row,
+  .mobile-doc-actions,
+  .search-scope-toggle,
+  #addNoteBtn,
+  #mobileAddNoteBtn,
+  [data-mmse-open]{
+    display:none !important;
+  }
   .record-title{
     font-family:'Inter',system-ui,sans-serif;
     font-size:20px;
@@ -151,6 +160,34 @@
     transition:background .15s ease, transform .15s ease, box-shadow .15s ease;
     box-shadow:0 7px 18px -10px rgba(31,95,82,.6);
   }
+  .mobile-template-sheet{
+    position:fixed;
+    left:12px;
+    right:12px;
+    bottom:calc(92px + env(safe-area-inset-bottom));
+    z-index:96;
+    display:none;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:9px;
+    padding:12px;
+    border:1px solid rgba(31,48,42,.12);
+    border-radius:18px;
+    background:#fff;
+    box-shadow:0 18px 42px -24px rgba(0,0,0,.5);
+  }
+  .mobile-template-sheet.visible{ display:grid; }
+  .mobile-template-option{
+    min-height:52px;
+    border:1px solid #DDE2DC;
+    border-radius:13px;
+    background:#F8FAF8;
+    color:#16201C;
+    font:900 13px/1.1 'Inter',sans-serif;
+    cursor:pointer;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .mobile-template-option:active{ transform:scale(.98); }
   .add-note-btn:hover{ background:var(--teal-deep); transform:translateY(-1px); box-shadow:0 10px 22px -12px rgba(31,95,82,.7); }
   .add-note-btn:active{ transform:translateY(0); }
   .add-note-icon{ font-size:22px; line-height:1; }
@@ -309,7 +346,7 @@
   .voice-result.visible{ display:block; }
   .voice-result-label{ color:#687080; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; }
   .voice-result-text{ white-space:pre-wrap; font-size:14px; line-height:1.6; }
-  .voice-modes{ display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:22px; }
+  .voice-modes{ display:grid; grid-template-columns:repeat(4,1fr); gap:9px; margin-top:22px; }
   .voice-mode{ min-height:43px; border:1.5px solid #D2D7DF; border-radius:999px; background:#fff; color:#131927; font:700 12px 'Inter',sans-serif; cursor:pointer; padding:8px 10px; }
   .voice-mode.active{ background:#FBE7E7; border-color:#F45155; color:#A72B31; }
   @media(max-width:850px){ .voice-modes{grid-template-columns:1fr 1fr;} .voice-mode:first-child{grid-column:1/-1;} }
@@ -1962,8 +1999,10 @@
         <div class="template-wrap">
           <button class="topbar-mode-btn template-btn" id="templateBtn" type="button" aria-haspopup="true" aria-expanded="false">Template</button>
           <div class="template-menu" id="templateMenu">
-            <button class="template-item" type="button" data-topbar-voice-mode="Medical certificate">Certificate</button>
+            <button class="template-item" type="button" data-topbar-voice-mode="Discharge summary">Discharge Summary</button>
+            <button class="template-item" type="button" data-topbar-voice-mode="">Visit Note</button>
             <button class="template-item" type="button" data-topbar-voice-mode="Reply letter">Reply Letter</button>
+            <button class="template-item" type="button" data-topbar-voice-mode="Medical certificate">Medical Certificate</button>
             <button class="template-item" type="button" data-mmse-open>MMSE</button>
           </div>
         </div>
@@ -2055,6 +2094,12 @@
       <svg width="29" height="29" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17l9-10" stroke="#0A781F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
   </nav>
+  <div class="mobile-template-sheet" id="mobileTemplateSheet" aria-label="Select note template">
+    <button class="mobile-template-option" type="button" data-mobile-template-mode="Discharge summary">Discharge summary</button>
+    <button class="mobile-template-option" type="button" data-mobile-template-mode="">Visit note</button>
+    <button class="mobile-template-option" type="button" data-mobile-template-mode="Reply letter">Reply letter</button>
+    <button class="mobile-template-option" type="button" data-mobile-template-mode="Medical certificate">Medical certificate</button>
+  </div>
 </div>
 
 <button class="continue-note-btn" id="continueNoteBtn" aria-label="Continue selected note by dictation" title="Continue dictation">
@@ -2082,9 +2127,10 @@
       </button>
     </div>
     <div class="continuation-mode-bar" id="continuationModeBar" aria-label="Voice note type">
+      <button class="continuation-mode-btn" data-new-voice-mode="Discharge summary">Discharge summary</button>
       <button class="continuation-mode-btn active" data-new-voice-mode="">Visit note</button>
-      <button class="continuation-mode-btn" data-new-voice-mode="Medical certificate">Medical certificate</button>
       <button class="continuation-mode-btn" data-new-voice-mode="Reply letter">Reply letter</button>
+      <button class="continuation-mode-btn" data-new-voice-mode="Medical certificate">Medical certificate</button>
     </div>
     <div class="continuation-status" id="continuationStatus">Ready</div>
   </div>
@@ -2408,6 +2454,7 @@ const mobileDeleteBtn = document.getElementById('mobileDeleteBtn');
 const mobileRecordBtn = document.getElementById('mobileRecordBtn');
 const mobileAddNoteBtn = document.getElementById('mobileAddNoteBtn');
 const mobileSaveBtn = document.getElementById('mobileSaveBtn');
+const mobileTemplateSheet = document.getElementById('mobileTemplateSheet');
 const continueNoteBtn = document.getElementById('continueNoteBtn');
 const topbarDocActions = document.getElementById('topbarDocActions');
 const topbarContinueBtn = document.getElementById('topbarContinueBtn');
@@ -2470,7 +2517,7 @@ const PATIENT_FIELDS = {
 const TEXT_SCHEMA = {type:'object',properties:{...PATIENT_FIELDS,text:{type:'string',description:'The complete requested editable clinical text. Preserve every clearly dictated clinical fact, medicine, dose, investigation, value, advice, and follow-up without summarizing or truncating.'}},required:['patientName','patientAge','patientUhid','text']};
 const CERTIFICATE_SCHEMA = {type:'object',properties:{...PATIENT_FIELDS,date:{type:'string'},patientSex:{type:'string'},certificateBody:{type:'string'}},required:['patientName','patientAge','patientUhid','date','patientSex','certificateBody']};
 const AMBIENT_FIELDS = ['presentingComplaint','historyOfPresentIllness','pastMedicalHistory','allergies','familyHistory','personalHistory','examinationFindings','reviewOfInvestigations','currentMedication','provisionalDiagnosis','treatmentPlan'];
-const OP_AMBIENT_FIELDS = [...AMBIENT_FIELDS,'prescription'];
+const OP_AMBIENT_FIELDS = [...AMBIENT_FIELDS];
 const REMEMBERED_EMAILS_STORAGE_KEY = 'woyz_notes_remembered_emails';
 const EMAIL_DEVICE_ID_STORAGE_KEY = 'woyz_notes_email_device_id';
 const EMAIL_FUNCTION_URL = 'https://asia-south1-woyz-be9e5.cloudfunctions.net/sendVisitNoteEmailHttp';
@@ -2491,8 +2538,10 @@ const GEMINI_PROMPTS = {
   ambient:`You are a clinical note assistant helping a doctor create a concise medical visit note from ambient consultation audio. The recording may be a natural doctor-patient-attendant conversation, a formal dictation, or a mixture of both. Listen to and process the entire recording, not only sentences that sound like dictated note text. The doctor states the patient name, age, and UHID at the beginning; extract those identifiers exactly and treat the remaining recording as the consultation. Convert clearly spoken clinically relevant conversation into the correct note sections, including symptoms, duration, progression, negatives, past history, examination, medicines, investigation results, diagnosis, and advice when they are actually present in the audio. Correct spelling and grammar while keeping the original meaning. Do not add, infer, assume, recommend, or hallucinate clinical information. Do not remove, ignore, or over-compress clinically relevant details that are clearly present. If something is unclear, omit it. Use NIL when a whole field is unsupported. Translate Malayalam clinical content into professional clinical English and transliterate names into English. Preserve chronology, medicines, doses, investigations, findings, diagnoses, and advice exactly as spoken. Review of investigations is a fidelity-critical section: preserve every dictated or conversationally stated investigation name, modality, side, level, date/time reference, numeric value, unit, impression, and normal/abnormal qualifier exactly; never add, remove, summarize, shorten, combine, normalize, reinterpret, or make investigations more concise. Format Review of investigations as a numbered list whenever investigations are present, with each numbered investigation/report starting on a new line. If an investigation has multiple findings or sentences, put each finding on its own line below that numbered investigation without numbering the findings. If blood investigations are dictated or discussed, group all blood tests from the same date under one numbered item such as "Blood investigations on 12th January 2026:"; below that item, list each blood value on its own unnumbered line. Never number individual blood values. If blood reports are present from multiple dates, create one numbered "Blood investigations on [date]:" item for each date. Add standard conventional units for common blood values even when units are not dictated, while preserving dictated values exactly. Format Current medications as a numbered list, with each numbered medicine starting on a new line, preserving drug name, dose, route, frequency, and duration exactly as stated. Current medicines belong in currentMedication. Newly advised or changed medicines, investigations, referrals, and follow-up belong in treatmentPlan. In Treatment Plan, number only separate complete treatment actions. Keep each medicine with its full dose, route, timing, frequency, and duration on one numbered line; never split words such as oral, night, morning, bedtime, for 20 days, once daily, twice daily, SOS, or after food into separate numbered items. For OP visit notes only, generate a Prescription section only when the doctor explicitly dictates a prescription section or clearly says that the following medicines are prescription/Rx medicines. Medicines mentioned only under Current Medications, Treatment Plan, advice, or general treatment changes must stay in those sections and must not be duplicated into Prescription. If the doctor does not explicitly indicate prescription/Rx, return prescription as NIL. Inside prescription, use exactly this compact format for each medicine: numbered medicine line containing only Tablet/Cap/Syrup/Inj brand name dose, then one clear English patient instruction with timing, duration, and food or administration instruction without repeating the medicine name, then one natural Malayalam patient instruction for the same medicine without repeating the medicine name. Always include the Malayalam instruction line for every prescription medicine, written in simple patient-friendly Kerala Malayalam with natural wording, not literal machine translation. Do not write the word Malayalam before the Malayalam text. Do not translate medicine brand names into Malayalam. Keep medicine names and doses in English in the numbered medicine line only. Always write tablet medicines as Tablet, not Tab. Do not use internal labels like morning, noon, night, bedtime, Duration, or Instructions in prescription lines. Do not include patient demographics inside prescription. For IP visit notes, do not generate prescription and return NIL if a prescription field is requested. Return only the requested JSON object without markdown.`,
   'Review dictation':`You are an expert medical transcription assistant. The doctor states the patient name, age, and UHID at the beginning; extract these identifiers into their JSON fields and do not repeat that opening identification in the text unless clinically necessary. Convert the remaining Malayalam, English, or Kerala Manglish dictation into complete professional clinical English suitable for a review note. Preserve every clearly dictated clinical fact, chronology, medicine, dose, route, frequency, duration, investigation, numeric value, unit, examination finding, assessment, advice, instruction, referral, and follow-up exactly as dictated. Do not summarize, shorten, condense, compress, omit, merge unrelated facts, or remove repeated clinically relevant details. Translate Malayalam clinical content and transliterate names into English. Correct grammar and punctuation, but never invent, infer, recommend, add, or remove information. If investigations are dictated, use the exact heading "Review of Investigations:" and format each investigation/report as a numbered item, with each report starting on a new line. If an investigation has multiple findings, put each finding on its own unnumbered line below that report. If blood investigations are dictated, group all blood tests from the same date under one numbered item and list each blood value below it on its own unnumbered line, adding standard conventional units when absent. If existing/background medicines are dictated, use the exact heading "Current Medications:" and number only those current medicines. If the doctor explicitly dictates a prescription/Rx section, start a separate exact heading "Prescription:" and number only prescription medicines from 1 again. Never continue numbering from Current Medications into Prescription, Advice, Instructions, or Follow-up. If advice, instructions, consultation notes, or treatment changes are dictated, keep them under the dictated heading or a suitable clinical heading and number them separately from Prescription. Return only the requested JSON object.`,
   'Reply letter':`You are a clinical reply letter drafting assistant. The doctor states the patient name, age, and UHID at the beginning; extract these identifiers into their JSON fields and exclude the opening identification from the letter unless it belongs naturally in the clinical content. Create a clean reply letter from only the dictated audio. Correct spelling and grammar and make sentences complete. Do not add, infer, assume, hallucinate, recommend, or remove any clinical information. Use a polite professional letter style and keep the original meaning exactly. The text must begin exactly with "To," followed by the dictated recipient name, credentials, department, hospital, or address, each on its own line when dictated. Leave one blank line before the main paragraphs. Do not use a salutation or a Reply Letter heading. End with "Thank you" one blank line below the final paragraph. Do not include sender credentials, signature, or footer. If a detail is not dictated, omit it; do not write placeholders or "Not dictated". Return only the requested JSON object.`,
-  'Medical certificate':`You are an expert medical certificate drafting assistant. The doctor states the patient name, age, and UHID at the beginning; extract them exactly into their JSON fields. Create a clean medical certificate from only the dictated audio. Correct spelling and grammar and make sentences complete. Do not add, infer, assume, hallucinate, recommend, or remove any clinical or administrative information. Use a simple certificate style. Use today's date only when no date is dictated. The certificateBody must begin with "This is to certify that" and contain one or more clear paragraphs. Include patient details only if dictated or provided in the JSON patient fields. If dates, rest period, diagnosis, fitness, restrictions, or purpose are dictated, include them exactly. If a detail is not dictated, omit it; do not write placeholders or "Not dictated". Do not include "To whomsoever it may concern", "Thank you", doctor credentials, or a signature in certificateBody. Return only the requested JSON object.`
+  'Medical certificate':`You are an expert medical certificate drafting assistant. The doctor states the patient name, age, and UHID at the beginning; extract them exactly into their JSON fields. Create a clean medical certificate from only the dictated audio. Correct spelling and grammar and make sentences complete. Do not add, infer, assume, hallucinate, recommend, or remove any clinical or administrative information. Use a simple certificate style. Use today's date only when no date is dictated. The certificateBody must begin with "This is to certify that" and contain one or more clear paragraphs. Include patient details only if dictated or provided in the JSON patient fields. If dates, rest period, diagnosis, fitness, restrictions, or purpose are dictated, include them exactly. If a detail is not dictated, omit it; do not write placeholders or "Not dictated". Do not include "To whomsoever it may concern", "Thank you", doctor credentials, or a signature in certificateBody. Return only the requested JSON object.`,
+  'Discharge summary':`You are an emergency medicine discharge summary drafting assistant. Create a discharge summary in the Aster Emergency Medicine format from only the clearly dictated audio. The doctor states the patient name, age, and UHID at the beginning; extract those identifiers exactly into JSON fields. The output text must be plain editable text, not markdown. Use this exact heading order and labels: Discharge Summary; Name; Age/Gender; UHID; IP No.; Address; Consultant; DOA; DOD; DIAGNOSIS; PROCEDURE DONE; DRUG ALLERGY; HISTORY; CLINICAL EXAMINATION; INVESTIGATIONS; LAB; RADIOLOGY; PROCEDURE / OPERATION NOTES; OTHERS; GENERAL INSTRUCTIONS; REASON FOR ADMISSION; COURSE IN HOSPITAL; MEDICATIONS ADMINISTERED; CONDITION AT DISCHARGE; ADVICE ON DISCHARGE. Preserve every clearly dictated clinical fact, chronology, investigation, value, procedure, consultation note, medicine, dose, route, frequency, duration, discharge condition, and advice exactly in meaning. In CLINICAL EXAMINATION, preserve emergency assessment details such as airway, breathing, circulation, disability, exposure, secondary survey, local examination, GCS, vitals, and system findings when spoken. Do not add, infer, assume, recommend, hallucinate, or remove any clinical information. Use NIL for unsupported sections. Return only the requested JSON object.`
 };
+GEMINI_PROMPTS.ambient += ' For this app, do not generate a Prescription, Rx, or drug dispensing section. Newly advised medicines and investigations must stay under Treatment Plan only.';
 
 const MMSE_SECTIONS = [
   {key:'orientationTime', title:'Orientation to time', accent:'#2563EB', tint:'#EFF6FF', max:5, items:['Year','Season','Date','Day','Month']},
@@ -2618,9 +2667,65 @@ NIL
 Treatment Plan:
 NIL`;
 
-const OP_VOICE_NOTE_TEMPLATE = `${VOICE_NOTE_TEMPLATE}
+const OP_VOICE_NOTE_TEMPLATE = VOICE_NOTE_TEMPLATE;
 
-Prescription:
+const DISCHARGE_SUMMARY_TEMPLATE = `Discharge Summary
+
+Name: NIL
+Age/Gender: NIL
+UHID: NIL
+IP No.: NIL
+Address: NIL
+Consultant: NIL
+DOA: NIL
+DOD: NIL
+
+DIAGNOSIS:
+NIL
+
+PROCEDURE DONE:
+NIL
+
+DRUG ALLERGY:
+NIL
+
+HISTORY:
+NIL
+
+CLINICAL EXAMINATION:
+NIL
+
+INVESTIGATIONS:
+NIL
+
+LAB:
+NIL
+
+RADIOLOGY:
+NIL
+
+PROCEDURE / OPERATION NOTES:
+NIL
+
+OTHERS:
+NIL
+
+GENERAL INSTRUCTIONS:
+NIL
+
+REASON FOR ADMISSION:
+NIL
+
+COURSE IN HOSPITAL:
+NIL
+
+MEDICATIONS ADMINISTERED:
+NIL
+
+CONDITION AT DISCHARGE:
+NIL
+
+ADVICE ON DISCHARGE:
 NIL`;
 
 const MEDICAL_CERTIFICATE_TEMPLATE = `Patient Name: NIL
@@ -2643,10 +2748,7 @@ To,
 Thank you`;
 
 function renderEntries(){
-  if (searchScope === 'all'){
-    renderAllPatientEntries();
-    return;
-  }
+  searchScope = 'today';
   renderTodayEntries();
 }
 
@@ -2743,7 +2845,7 @@ function renderOpPatientEntries(){
     btn.className = 'entry' + (i === activeIndex ? ' active' : '');
     const serialNumber = records.length - i;
     const namedDraft = r.patientData?.name && r.patientData.name !== 'NIL';
-    const entryName = namedDraft ? r.patientData.name : 'Visit Note draft';
+    const entryName = namedDraft ? r.patientData.name : (r.heading || 'Visit Note draft');
     const ownerCode = ownerInitials(noteOwnerUid(r)) || (namedDraft ? initials(r.patientData.name) : 'D');
     btn.innerHTML = `
       <span class="entry-avatar">${escapeHtml(serialNumber)}</span>
@@ -3561,7 +3663,9 @@ function templateWithPatientData(template, patientData){
   const patient = patientDataWithFallback(patientData);
   return String(template || '')
     .replace(/^Patient Name:\s*.*$/m, `Patient Name: ${patient.name}`)
+    .replace(/^Name:\s*.*$/m, `Name: ${patient.name}`)
     .replace(/^Age:\s*.*$/m, `Age: ${patient.age}`)
+    .replace(/^Age\/Gender:\s*.*$/m, `Age/Gender: ${[patient.age, patient.sex].filter(value => value && !isNilLike(value)).join('/') || 'NIL'}`)
     .replace(/^UHID:\s*.*$/m, `UHID: ${patient.uhid}`)
     .replace(/^Sex:\s*.*$/m, `Sex: ${patient.sex}`);
 }
@@ -3850,27 +3954,14 @@ function updateSearchScopeToggle(){
 }
 
 function setSearchScope(scope){
-  searchScope = scope === 'all' ? 'all' : 'today';
+  searchScope = 'today';
   clearTimelineSelection();
   updateSearchScopeToggle();
   renderEntries();
-  if (searchScope === 'today'){
-    if (openDefaultOpView()) return;
-    if (activeIndex !== null && records[activeIndex]) selectEntry(activeIndex);
-    else if (records.length) selectEntry(0);
-    else showEmptyDate(selectedVisitType === 'IP' ? 'No active IP notes for this date.' : `No ${selectedVisitType} notes saved for this date.`);
-    return;
-  }
-  activeIndex = null;
-  topbarPatient.classList.remove('visible');
-  copyBtn.style.display = 'none';
-  hidePrintMenuState();
-  saveDraftBtn.classList.remove('visible');
-  deleteBtn.classList.remove('visible');
-  dischargeBtn.classList.remove('visible');
-  renderTimelineMenu();
-  updateContinueNoteButton();
-  mainScroll.innerHTML = '<div class="empty-state"><div class="empty-title">Search all patients</div><div class="empty-sub">Type a name or UHID, then select a patient to view previous records.</div></div>';
+  if (openDefaultOpView()) return;
+  if (activeIndex !== null && records[activeIndex]) selectEntry(activeIndex);
+  else if (records.length) selectEntry(0);
+  else showEmptyDate('No OP notes saved for this date.');
 }
 
 function updateAnonymizeToggle(){
@@ -3889,7 +3980,7 @@ function refreshAnonymizedView(){
 }
 
 function setVisitType(type){
-  selectedVisitType = type === 'IP' ? 'IP' : 'OP';
+  selectedVisitType = 'OP';
   clearTimelineSelection();
   updateVisitToggle();
   if (searchScope === 'all'){
@@ -4095,7 +4186,7 @@ function updateContinueNoteButton(){
     button.classList.toggle('active', showVoiceModes && record?.selectedMode === button.dataset.topbarVoiceMode);
     button.disabled = continuationState.hasStarted || continuationState.processing;
   });
-  templateBtn.classList.toggle('active', templateMenu.classList.contains('open') || (showVoiceModes && ['Medical certificate','Reply letter'].includes(record?.selectedMode)));
+  templateBtn.classList.toggle('active', templateMenu.classList.contains('open') || (showVoiceModes && ['Discharge summary','Medical certificate','Reply letter'].includes(record?.selectedMode)));
   templateBtn.disabled = continuationState.hasStarted || continuationState.processing;
 }
 
@@ -4417,7 +4508,7 @@ function voiceMarkup(){
           <div class="voice-status" id="voiceStatus">${draft.status || (isRecording ? 'Recording in progress…' : (isPaused ? 'Recording paused' : 'Press Space to start recording'))}</div>
         </div>
         <div class="voice-modes">
-          ${['Review dictation','Reply letter','Medical certificate'].map(mode => `<button class="voice-mode ${draft.selectedMode === mode ? 'active' : ''}">${mode}</button>`).join('')}
+          ${['Discharge summary','Visit note','Reply letter','Medical certificate'].map(mode => `<button class="voice-mode ${((mode === 'Visit note' && !draft.selectedMode) || draft.selectedMode === mode) ? 'active' : ''}">${mode}</button>`).join('')}
         </div>
         <div class="voice-result ${hasGeneratedResult ? 'visible' : ''}" id="voiceResult">
           <div class="voice-result-label">Generated result</div>
@@ -5784,9 +5875,10 @@ function selectedRecordCanContinue(){
 }
 
 function newVoiceTemplateForMode(mode, visitType = selectedVisitType){
+  if (mode === 'Discharge summary') return DISCHARGE_SUMMARY_TEMPLATE;
   if (mode === 'Medical certificate') return MEDICAL_CERTIFICATE_TEMPLATE;
   if (mode === 'Reply letter') return REPLY_LETTER_TEMPLATE;
-  return visitType === 'OP' ? OP_VOICE_NOTE_TEMPLATE : VOICE_NOTE_TEMPLATE;
+  return VOICE_NOTE_TEMPLATE;
 }
 
 function openContinuationDock(){
@@ -6036,11 +6128,11 @@ async function finishNewVoiceDraft(audioBlob, apiKey, onRetry){
   draft.saved = false;
   draft.status = 'Note ready';
   markRecordDirty(draft,{generated:true});
-  const draftVisitType = draft.visitType || selectedVisitType;
+  const draftVisitType = 'OP';
   const selectedDateString = dateInputValue(selectedVisitDate);
-  const admissionDate = draftVisitType === 'IP' ? (draft.admissionDate || draft.visitDate || selectedDateString) : null;
+  const admissionDate = null;
   draft.visitType = draftVisitType;
-  if (admissionDate) draft.admissionDate = admissionDate;
+  delete draft.admissionDate;
   const liveIndex = records.findIndex(record => recordLocalKey(record) === recordLocalKey(draft));
   if (liveIndex >= 0){
     records[liveIndex] = applyLocalDirtyRecord({...records[liveIndex], ...draft, transcribing:false});
@@ -6086,7 +6178,7 @@ function appendDocumentText(generatedText, mode){
   if (!text) return;
   const record = continuationTargetRecord();
   if (!record) return;
-  const label = mode === 'Medical certificate' ? 'Medical Certificate' : 'Reply Letter';
+  const label = mode === 'Medical certificate' ? 'Medical Certificate' : mode === 'Discharge summary' ? 'Discharge Summary' : 'Reply Letter';
   appendTextToRecord(record, `${label} (${reviewTimestampLabel()}):\n${text}`, {review:false});
 }
 
@@ -6374,10 +6466,11 @@ async function sendAudioToGemini(audioBlob, apiKey, selectedMode, onRetry, visit
   const systemPrompt = GEMINI_PROMPTS[mode];
   const responseSchema = mode === 'ambient' ? ambientSchemaForVisitType(visitContext) : mode === 'Medical certificate' ? CERTIFICATE_SCHEMA : TEXT_SCHEMA;
   const taskPrompts = {
-    ambient:`Review the complete doctor-patient-attendant recording and produce a mutually consistent structured ${visitContext} visit note from all clearly audible clinical conversation, not only from formal dictated note phrases. Extract clinically relevant facts that are actually present in the ambient conversation and place them under the correct sections. Never infer missing details, never hallucinate, and never add or remove clinical facts. Use NIL for unsupported fields. In Review of Investigations, preserve investigation content fully and verbatim in meaning; never add, remove, shorten, summarize, or make it concise. Use numbered lists for Review of Investigations and Current Medications, with each numbered investigation or medicine starting on a new line. For investigation reports with multiple findings, place each finding on a separate unnumbered line below the numbered investigation. For blood investigations, use one numbered item per blood-report date and list the individual blood values below it without numbering, adding standard units when absent. In Treatment Plan, number only complete treatment actions. Do not split medicine dose, route, timing, frequency, or duration into separate numbered items.${visitContext === 'OP' ? ' Include a Prescription section only when the doctor explicitly dictates a prescription/Rx section or clearly says the following medicines are prescription/Rx medicines. Do not duplicate medicines from Current Medications, Treatment Plan, advice, or treatment changes into Prescription. In Prescription, each medicine must have exactly three lines: numbered Tablet/Cap/Syrup/Inj brand name dose; English patient instruction without repeating the medicine name; natural patient-friendly Kerala Malayalam instruction without repeating the medicine name. Always include the Malayalam instruction line for every prescription medicine. Do not label the Malayalam line. Always write Tablet, not Tab. Do not include demographics inside Prescription.' : ' Do not create a Prescription section for IP notes.'}`,
+    ambient:`Review the complete doctor-patient-attendant recording and produce a mutually consistent structured OP visit note from all clearly audible clinical conversation, not only from formal dictated note phrases. Extract clinically relevant facts that are actually present in the ambient conversation and place them under the correct sections. Never infer missing details, never hallucinate, and never add or remove clinical facts. Use NIL for unsupported fields. In Review of Investigations, preserve investigation content fully and verbatim in meaning; never add, remove, shorten, summarize, or make it concise. Use numbered lists for Review of Investigations and Current Medications, with each numbered investigation or medicine starting on a new line. For investigation reports with multiple findings, place each finding on a separate unnumbered line below the numbered investigation. For blood investigations, use one numbered item per blood-report date and list the individual blood values below it without numbering, adding standard units when absent. In Treatment Plan, number only complete treatment actions. Do not split medicine dose, route, timing, frequency, or duration into separate numbered items. Do not create a Prescription, Rx, or drug dispensing section; medicines advised by the doctor belong in Treatment Plan only.`,
     'Review dictation':'Transcribe the recording faithfully. Correct only grammar, spelling, and punctuation. Do not add, remove, or infer clinical content.',
     'Reply letter':'Draft a polite professional reply letter using only clearly dictated facts. Begin the letter text with "To," and end with "Thank you". Omit undictated details and do not add, remove, or infer clinical content.',
-    'Medical certificate':'Convert only the clearly dictated facts into a simple medical-certificate JSON. certificateBody must begin with "This is to certify that". Omit undictated details and do not add, remove, or infer facts.'
+    'Medical certificate':'Convert only the clearly dictated facts into a simple medical-certificate JSON. certificateBody must begin with "This is to certify that". Omit undictated details and do not add, remove, or infer facts.',
+    'Discharge summary':'Create an Aster Emergency Medicine discharge summary using the exact heading order requested in the system instruction. Preserve dictated ED assessment, investigations, procedure notes, course in hospital, medicines administered, discharge condition, and advice. Use NIL for unsupported sections. Do not add or infer facts.'
   };
   const payload = await generateContentWithRetry({
     apiKey,
@@ -6499,6 +6592,9 @@ async function generateContentWithRetry({apiKey,audioBlob,audioData,systemPrompt
 
 function formatGeneratedOutput(data, mode, patient, visitType = selectedVisitType){
   const patientHeader = `Patient Name: ${patient.name}\nAge: ${patient.age}\nUHID: ${patient.uhid}`;
+  if (mode === 'Discharge summary'){
+    return String(data.text || '').trim() || templateWithPatientData(DISCHARGE_SUMMARY_TEMPLATE, patient);
+  }
   if (mode === 'Review dictation' || mode === 'Reply letter'){
     return `${patientHeader}\n\n${String(data.text || '').trim()}`.trim();
   }
@@ -6518,7 +6614,6 @@ function formatGeneratedOutput(data, mode, patient, visitType = selectedVisitTyp
     ['Diagnosis',data.provisionalDiagnosis],
     ['Treatment Plan',data.treatmentPlan]
   ];
-  if (visitType === 'OP') sections.push(['Prescription',data.prescription]);
   return `${patientHeader}\nSex: ${patient.sex || data.patientSex || 'NIL'}\n\n${sections.map(([label,value])=>`${label}:\n${formatSectionValue(label,value)}`).join('\n\n')}`;
 }
 
@@ -6756,6 +6851,7 @@ function normalizeNumberedLines(text){
 }
 
 function voiceDraftHeadingForMode(mode){
+  if (mode === 'Discharge summary') return 'Discharge Summary draft';
   if (mode === 'Medical certificate') return 'Medical Certificate draft';
   if (mode === 'Reply letter') return 'Reply Letter draft';
   return 'Visit Note draft';
@@ -6765,7 +6861,7 @@ function selectExistingDraftSnapshot(snapshot){
   const data = snapshot.data();
   pendingSelectId = snapshot.id;
   pendingNewVoiceDockId = data.voiceDraft === true ? snapshot.id : null;
-  selectedVisitType = data.visitType === 'IP' ? 'IP' : 'OP';
+  selectedVisitType = 'OP';
   updateVisitToggle();
   const existingDate = data.visitDate;
   if (existingDate){
@@ -6793,7 +6889,7 @@ function selectExistingDraftRecord(record){
   if (!record?.firestoreId) return false;
   pendingSelectId = record.firestoreId;
   pendingNewVoiceDockId = record.voiceDraft === true ? record.firestoreId : null;
-  selectedVisitType = noteVisitType(record);
+  selectedVisitType = 'OP';
   updateVisitToggle();
   if (record.visitDate){
     const [year,month,day] = record.visitDate.split('-').map(Number);
@@ -6845,9 +6941,9 @@ async function createVoiceDraft(mode = null){
   if (!currentUser) return;
   return withDraftCreationLock(async () => {
     const selectedMode = mode || null;
-    const requestedVisitType = selectedVisitType === 'IP' ? 'IP' : 'OP';
+    const requestedVisitType = 'OP';
     const requestedDateString = dateInputValue(selectedVisitDate);
-    const shouldPrefillPatient = ['Medical certificate','Reply letter'].includes(selectedMode);
+    const shouldPrefillPatient = ['Medical certificate','Reply letter','Discharge summary'].includes(selectedMode);
     const sourceRecord = shouldPrefillPatient ? (activeIndex !== null ? records[activeIndex] : (selectedOpTimelineRecord() || latestOpTimelineRecord())) : null;
     const sourcePatientData = shouldPrefillPatient ? selectedPatientDataForNewDraft() : {name:'NIL',age:'NIL',uhid:'NIL',sex:'NIL'};
     const sourceKey = sourceRecord && !sourceRecord.voiceDraft ? patientSearchKey(sourceRecord) : null;
@@ -7200,24 +7296,36 @@ mobileCopyBtn.addEventListener('click', () => copyBtn.click());
 mobileDeleteBtn.addEventListener('click', () => deleteBtn.click());
 mobileRecordBtn.addEventListener('click', async event => {
   event.preventDefault();
-  await createVoiceDraft();
+  mobileTemplateSheet.classList.toggle('visible');
   closeMobileSidebar();
+});
+mobileTemplateSheet.addEventListener('click', async event => {
+  const button = event.target.closest('[data-mobile-template-mode]');
+  if (!button) return;
+  mobileTemplateSheet.classList.remove('visible');
+  await createVoiceDraft(button.dataset.mobileTemplateMode || null);
+});
+document.addEventListener('click', event => {
+  if (!mobileTemplateSheet.classList.contains('visible')) return;
+  if (event.target.closest('#mobileRecordBtn') || event.target.closest('#mobileTemplateSheet')) return;
+  mobileTemplateSheet.classList.remove('visible');
 });
 mobileAddNoteBtn.addEventListener('click', () => addNoteBtn.click());
 mobileSaveBtn.addEventListener('click', () => saveDraftBtn.click());
 continueNoteBtn.addEventListener('click', openContinuationDock);
 topbarContinueBtn.addEventListener('click', openContinuationDock);
 function handleDocumentModeAction(mode){
-  if (!mode || continuationState.hasStarted || continuationState.processing) return;
+  if (continuationState.hasStarted || continuationState.processing) return;
+  const normalizedMode = mode || null;
   const draft = records[activeIndex];
   if (draft?.voiceDraft){
-    const nextMode = draft.selectedMode === mode ? null : mode;
+    const nextMode = draft.selectedMode === normalizedMode ? null : normalizedMode;
     setVoiceDraftMode(draft, nextMode);
     if (continuationState.open && continuationState.mode === 'new') renderContinuationDock();
     return;
   }
-  if (selectedRecordCanContinue() && openDocumentAppendDock(mode)) return;
-  createVoiceDraft(mode);
+  if (normalizedMode && selectedRecordCanContinue() && openDocumentAppendDock(normalizedMode)) return;
+  createVoiceDraft(normalizedMode);
 }
 
 topbarDocActions.addEventListener('click', event => {
