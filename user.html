@@ -2078,7 +2078,7 @@
         </div>
       </div>
       <div class="topbar-doc-actions" id="topbarDocActions" aria-label="Voice note actions">
-        <button class="topbar-mode-btn topbar-review-btn" id="topbarContinueBtn" aria-label="Review note dictation for selected note" title="Review note dictation">Review Note</button>
+        <button class="topbar-mode-btn topbar-review-btn" id="topbarContinueBtn" aria-label="Add on dictation for selected note" title="Add on dictation">Add On</button>
         <div class="template-wrap">
           <button class="topbar-mode-btn template-btn" id="templateBtn" type="button" aria-haspopup="true" aria-expanded="false">Template</button>
           <div class="template-menu" id="templateMenu">
@@ -5566,7 +5566,7 @@ function renderGeneratedNote(draft){
           </div>
         </div>
         <div class="note-editor ${anonymizeEnabled ? 'anonymized' : ''}" id="generatedNoteEditor" data-note-id="${escapeHtml(draft.firestoreId || '')}" data-note-owner="${escapeHtml(noteOwnerUid(draft) || '')}" contenteditable="${canEdit ? 'true' : 'false'}" spellcheck="true" role="textbox" aria-multiline="true" aria-label="Editable generated note">${richNoteHtml(displayText)}</div>
-        <button class="mobile-review-inline ${selectedRecordCanContinue() ? 'visible' : ''}" id="mobileInlineReviewBtn" aria-label="Review note dictation for selected note">Review Note</button>
+        <button class="mobile-review-inline ${selectedRecordCanContinue() ? 'visible' : ''}" id="mobileInlineReviewBtn" aria-label="Add on dictation for selected note">Add On</button>
       </section>
     </div>`;
   const editor = document.getElementById('generatedNoteEditor');
@@ -5981,7 +5981,7 @@ function openContinuationDock(){
   continuationState.hasStarted = false;
   continuationState.audioBlob = null;
   continuationState.documentMode = null;
-  continuationState.status = 'Ready to continue selected note';
+  continuationState.status = 'Ready to add on to selected note';
   remainingSeconds = 300;
   placeDock('right');
   renderContinuationDock();
@@ -6465,15 +6465,15 @@ async function sendContinuationAudioToGemini(audioBlob, apiKey, onRetry){
     apiKey,
     audioBlob,
     audioData,
-    systemPrompt:'You are an ambient clinical review-note assistant. The recording may be a doctor-patient-attendant conversation, a formal dictation, or a mixture of both. Listen to and process the whole recording, not only phrases that sound dictated. Convert all clearly audible clinically relevant conversation into complete professional clinical English to append to the existing note. Correct spelling and grammar only. Do not add, remove, infer, summarize, shorten, condense, compress, or change clinical information. Preserve every clearly stated symptom, chronology, medicine, dose, route, frequency, duration, investigation, numeric value, unit, date, examination finding, advice, instruction, consultation note, referral, and follow-up exactly in meaning. Do not output a leading "Review Note:" heading; the app will add it. Output medicines under the exact heading "Prescription:" only when the doctor explicitly starts a prescription/Rx section or clearly says that the following medicines are prescription/Rx medicines. Medicines discussed as current medications, treatment plan, advice, or general treatment changes must stay in those sections and must not be duplicated into Prescription. Inside Prescription, use exactly this compact format for each medicine: numbered medicine line containing only Tablet/Cap/Syrup/Inj brand name dose, then one clear English patient instruction with timing, duration, and food or administration instruction without repeating the medicine name, then one natural Malayalam patient instruction for the same medicine without repeating the medicine name. Always include the Malayalam instruction line for every prescription medicine, written in simple patient-friendly Kerala Malayalam with natural wording, not literal machine translation. Do not write the word Malayalam before the Malayalam text. Do not translate medicine brand names into Malayalam. Keep medicine names and doses in English in the numbered medicine line only. Always write tablet medicines as Tablet, not Tab. If medicines are stated only as medication history or existing background medicines, output them under the exact heading "Current Medications:" and format each medicine as a numbered item. If investigation reports are stated, output them under the exact heading "Review of Investigations:" and format each investigation/report as a numbered item, with every numbered item starting on a new line. If investigation orders or advised tests are stated, output them under the exact heading "Treatment Plan:" and number each ordered investigation or test separately. If advice, instructions, consultation advice, treatment changes, or follow-up are stated, preserve the dictated heading when present and list separate instructions one by one. Subheadings such as "For shoulder pain:" must be plain bold-style headings, not numbered list items. If no investigations, medicines, prescriptions, advice, or instructions are stated, do not add those headings; return only the complete continuation paragraph or dictated headings. Do not repeat patient identifiers unless the doctor states them as clinical content. Return only the requested JSON object.',
-    taskPrompt:'Create append-only review-note text from the complete ambient recording. Capture clinically relevant doctor-patient-attendant conversation as well as formal dictation. Do not create a full new visit note and do not add a leading "Review Note:" heading. Do not summarize, shorten, condense, or omit medicines, doses, investigations, values, instructions, advice, or follow-up. Create a "Prescription:" section only when the doctor explicitly starts a prescription/Rx section or clearly says that the following medicines are prescription/Rx medicines. Do not move medicines from Current Medications, Treatment Plan, advice, or general treatment changes into Prescription. When Prescription is explicitly dictated, format each medicine as three lines: numbered Tablet/Cap/Syrup/Inj brand name dose; English patient instruction without repeating the medicine name; natural patient-friendly Kerala Malayalam instruction without repeating the medicine name. Always include the Malayalam instruction line for each prescription medicine. Do not put prescribed medicines under Current Medications. Only create a "Current Medications:" section when medicines are stated as medication history or existing background medicines. Only create a "Review of Investigations:" section when investigation reports are stated; then number the investigation reports one by one. For multi-sentence investigation findings, place each finding on a separate unnumbered line below that investigation. For blood investigations, use one numbered item per blood-report date and list the individual blood values below it without numbering, adding standard units when absent. If investigation orders or advised tests are stated, place them under "Treatment Plan:" and number each ordered investigation or test separately. For advice, instructions, consultation notes, treatment changes, or follow-up, keep the dictated heading when present and list separate items one by one. Subheadings ending with a colon, such as "For shoulder pain:", should remain unnumbered headings.',
+    systemPrompt:'You are an ambient clinical add-on note assistant. The recording may be a doctor-patient-attendant conversation, a formal dictation, or a mixture of both. Listen to and process the whole recording, not only phrases that sound dictated. Convert only clearly audible clinically relevant content into complete professional clinical English to append to an existing note. Correct spelling and grammar only. Do not add, remove, infer, summarize, shorten, condense, compress, or change clinical information. Preserve every clearly stated symptom, chronology, investigation, numeric value, unit, date, examination finding, advice, medicine, dose, route, frequency, duration, and follow-up exactly in meaning. Output only these sections when content is present: "Review Note:", "Review of Investigations:", "Examination Findings:", and "Treatment Plan:". Do not output any unsupported section. Do not output NIL, none, placeholders, patient identifiers, demographics, prescription, current medications, diagnosis, advice, instructions, follow-up, or any other heading. Put symptom updates, clinical course, response to treatment, and general review content under "Review Note:". Put investigation reports and values under "Review of Investigations:". Put examination findings and vitals under "Examination Findings:". Put medicines advised, investigation orders, referrals, procedures planned, follow-up plans, and treatment changes under "Treatment Plan:". Return only the requested JSON object.',
+    taskPrompt:'Create append-only add-on text from the complete recording. Use only these section headings when supported by dictated content: Review Note, Review of Investigations, Examination Findings, Treatment Plan. Omit any section with no dictated content. Never create Prescription, Current Medications, Diagnosis, Advice, Instructions, Follow-up, Patient Name, Age, UHID, or Sex sections. Do not add a section just to write NIL. Preserve dictated facts, medicines, doses, investigations, values, examination findings, treatment changes, and plans exactly in meaning. Number Review of Investigations and Treatment Plan items when there are multiple separate items. Put general review narrative only under Review Note.',
     responseSchema:continuationResponseSchema(),
     onRetry
   });
   const responseText = payload.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('').trim();
   if (!responseText) throw noteServiceError('The service returned an empty response.', true);
   try{
-    return stripLeadingReviewNoteHeading(formatContinuationText(String(JSON.parse(responseText).text || '').trim()));
+    return stripLeadingReviewNoteHeading(formatAddOnContinuationText(String(JSON.parse(responseText).text || '').trim()));
   }catch(error){
     throw noteServiceError('The service returned an invalid structured response.', true);
   }
@@ -6502,6 +6502,42 @@ function formatContinuationText(text){
     }
   ).trim();
   return sectionMatched ? formatted : formatReviewNoteBody(formatted);
+}
+
+function formatAddOnContinuationText(text){
+  const sectionBoundary = '(?:Review Note(?:\\s*\\([^)]*\\))?|Review of Investigations|Examination Findings|Examination|Exam Findings|Clinical Examination|Treatment Plan|Current Medications|Medications|Prescription|Rx|R\\/x|Advice|Instructions?|Follow[- ]?up|Diagnosis|Patient Name|Age|UHID|Sex)';
+  const numberedHeadingPrefix = '\\s*(?:\\d+[.)]\\s*)?';
+  const normalized = String(text || '')
+    .replace(new RegExp(`${numberedHeadingPrefix}(Review Note(?:\\s*\\([^)]*\\))?:\\s*)`, 'gi'), '\n\nReview Note:\n')
+    .replace(new RegExp(`${numberedHeadingPrefix}(Review of Investigations:\\s*)`, 'gi'), '\n\nReview of Investigations:\n')
+    .replace(new RegExp(`${numberedHeadingPrefix}(?:(?:Clinical\\s+)?Examination|Exam(?:ination)? Findings):\\s*`, 'gi'), '\n\nExamination Findings:\n')
+    .replace(new RegExp(`${numberedHeadingPrefix}(Treatment Plan:\\s*)`, 'gi'), '\n\nTreatment Plan:\n')
+    .replace(new RegExp(`${numberedHeadingPrefix}((?:Current\\s+)?Medications?|Prescription|Rx|R\\/x|Advice|Instructions?|Follow[- ]?up|Diagnosis|Patient Name|Age|UHID|Sex):\\s*`, 'gi'), '\n\n$1:\n')
+    .replace(/([.!?])\s+([A-Z][A-Za-z /-]{2,80}:)/g, '$1\n\n$2')
+    .replace(/\s+(\d+[.)]\s+)/g, '\n$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  const allowedLabels = new Set(['Review Note','Review of Investigations','Examination Findings','Treatment Plan']);
+  const pieces = [];
+  let firstSectionIndex = -1;
+  const formatted = normalized.replace(
+    new RegExp(`(${sectionBoundary}):[ \\t]*\\n([\\s\\S]*?)(?=\\n+${sectionBoundary}:|$)`, 'gi'),
+    (match, label, value, offset) => {
+      if (firstSectionIndex < 0) firstSectionIndex = offset;
+      const rawLabel = label.trim();
+      const normalizedLabel = /^(?:(?:Clinical\s+)?Examination|Exam(?:ination)? Findings)$/i.test(rawLabel)
+        ? 'Examination Findings'
+        : rawLabel.replace(/\s*\([^)]*\)\s*/g, '').trim();
+      if (!allowedLabels.has(normalizedLabel)) return '';
+      const formattedValue = formatSectionValue(normalizedLabel, value);
+      if (!formattedValue || isNilLike(formattedValue)) return '';
+      pieces.push(`${normalizedLabel}:\n${formattedValue}`);
+      return '';
+    }
+  ).trim();
+  const intro = firstSectionIndex > 0 ? normalized.slice(0, firstSectionIndex).trim() : (pieces.length ? '' : formatted);
+  if (intro && !isNilLike(intro)) pieces.unshift(`Review Note:\n${formatReviewNoteBody(intro)}`);
+  return pieces.join('\n\n').trim();
 }
 
 function formatStoredReviewNotes(text){
