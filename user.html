@@ -1984,30 +1984,45 @@
     }
     .date-nav{
       position:absolute;
-      right:6px;
-      bottom:7px;
+      right:10px;
+      top:50%;
+      transform:translateY(-50%);
+      height:38px;
       margin-left:0;
-      gap:3px;
+      gap:0;
+      align-items:center;
+      overflow:hidden;
+      border:1px solid #DDE2DC;
+      border-radius:11px;
+      background:#fff;
+      box-shadow:0 1px 2px rgba(18,26,22,.04);
     }
     .date-step{
-      width:30px;
+      width:32px;
       height:38px;
-      border:1px solid #DDE2DC;
-      border-radius:8px;
+      border:0;
+      border-radius:0;
       background:#fff;
-      font-size:24px;
-      color:#575757;
+      font-size:23px;
+      line-height:1;
+      color:#607067;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:0;
     }
+    .date-step:first-of-type{ border-right:1px solid #E7ECE8; }
+    .date-step:last-of-type{ border-left:1px solid #E7ECE8; }
     .date-display{
       display:block;
-      width:86px;
+      width:84px;
       height:38px;
-      border:1px solid #DDE2DC;
-      border-radius:8px;
-      background:#fff;
+      border:0;
+      border-radius:0;
+      background:#FBFCFB;
       padding:0;
-      font:800 12px 'Inter',sans-serif;
-      color:#555;
+      font:900 12px 'Inter',sans-serif;
+      color:#24332C;
       text-align:center;
       cursor:pointer;
     }
