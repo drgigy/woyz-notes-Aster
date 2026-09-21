@@ -1489,6 +1489,12 @@
     margin-bottom:6px;
   }
   .empty-sub{ font-size:13.5px; max-width:280px; }
+  .home-brand-logo{
+    display:block;
+    width:min(520px,88vw);
+    height:auto;
+    margin:0 auto 14px;
+  }
 
   .mobile-app-bar,.mobile-backdrop,.mobile-visit-row,.mobile-bottom-actions{ display:none; }
 
@@ -4624,7 +4630,7 @@ function showHomeScreen(){
   renderTimelineMenu();
   mainScroll.innerHTML = `
     <div class="empty-state">
-      <div class="empty-title">ER WOYZ</div>
+      <img class="home-brand-logo" src="./icons/woyz-er-home.png" alt="WOYZ ER">
       <div class="home-quick-actions">
         <button class="home-quick-btn primary" type="button" id="homeAddNewBtn">Add New</button>
         <button class="home-quick-btn" type="button" id="homeScanQrBtn">Scan QR</button>
@@ -4700,6 +4706,12 @@ function showHomeScreen(){
     if (gcsTotal) gcsTotal.textContent = `GCS ${total}/15`;
   };
   toolsBtn?.addEventListener('click', () => {
+    if (gcsPanel?.classList.contains('visible')){
+      gcsPanel.classList.remove('visible');
+      toolsMenu?.classList.remove('open');
+      toolsBtn.setAttribute('aria-expanded', 'false');
+      return;
+    }
     const isOpen = toolsMenu?.classList.toggle('open');
     toolsBtn.setAttribute('aria-expanded', String(Boolean(isOpen)));
   });
@@ -8015,7 +8027,8 @@ mobileSidebarNewBtn.addEventListener('click', () => {
 });
 mobileSidebarSettingsBtn.addEventListener('click', event => {
   event.stopPropagation();
-  openSettings();
+  if (settingsMenu.classList.contains('open')) closeSettings();
+  else openSettings();
 });
 mobileSidebarBackBtn.addEventListener('click', closeMobileSidebar);
 topbarPatient.addEventListener('click', openMobileSidebar);
