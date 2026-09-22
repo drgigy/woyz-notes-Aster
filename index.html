@@ -603,6 +603,24 @@ function cleanAge(value){
   return number || text.replace(/\b(years?|yrs?|old)\b/gi, '').trim() || 'NIL';
 }
 
+function extractPatientFromNote(text, fallback = {}){
+  const source = String(text || '').replace(/\r\n/g, '\n');
+  const stopLabels = 'Patient\\s+Name|Discharge\\s+Summary\\s+Name|Name|Age\\/Gender|Age|UHID|UHCID|Sex|Gender|IP\\s+No\\.?|Address|Consultant|DOA|DOD|Date';
+  const findField = labelPattern => {
+    const match = source.match(new RegExp(`(?:^|\\n|\\s)(?:${labelPattern}):\\s*([\\s\\S]*?)(?=\\s+(?:${stopLabels}):|\\n|$)`, 'i'));
+    return match?.[1]?.trim();
+  };
+  const ageGender = findField('Age\\/Gender');
+  const ageFromCombined = ageGender?.split('/')[0]?.trim();
+  const sexFromCombined = ageGender?.split('/').slice(1).join('/').trim();
+  return {
+    name:findField('Patient\\s+Name|Discharge\\s+Summary\\s+Name|Name') || fallback?.name || 'NIL',
+    age:findField('Age') || ageFromCombined || fallback?.age || 'NIL',
+    uhid:findField('UHID|UHCID') || fallback?.uhid || 'NIL',
+    sex:findField('Sex|Gender') || sexFromCombined || fallback?.sex || 'NIL'
+  };
+}
+
 function fullVisitDateLabel(value){
   const [year,month,day] = String(value || '').split('-').map(Number);
   if (!year || !month || !day) return value || 'Undated';
@@ -1759,19 +1777,31 @@ saveNoteBtn.addEventListener('click', async () => {
       await Promise.all(allEditors.map(item => {
         const entryNote = noteForAdminAllEntryEditor(item);
         if (!entryNote) return Promise.resolve();
+        const transcription = editorPlainText(item);
+        const patientData = extractPatientFromNote(transcription, entryNote.data.patientData);
+        entryNote.data.transcription = transcription;
+        entryNote.data.patientData = patientData;
         return updateDoc(doc(db,entryNote.path),{
-          transcription:editorPlainText(item),
+          transcription,
+          patientData,
           adminEditedAt:serverTimestamp(),
           adminEditedBy:currentAdminUid || ''
         });
       }));
     }else{
+      const transcription = editorPlainText(editor);
+      const patientData = extractPatientFromNote(transcription, note.data.patientData);
+      note.data.transcription = transcription;
+      note.data.patientData = patientData;
       await updateDoc(doc(db,note.path),{
-        transcription:editorPlainText(editor),
+        transcription,
+        patientData,
         adminEditedAt:serverTimestamp(),
         adminEditedBy:currentAdminUid || ''
       });
     }
+    renderEntries();
+    renderAdminTimelineMenu();
     saveNoteBtn.textContent = 'Saved';
     saveNoteBtn.classList.add('copied');
     setTimeout(() => {

@@ -8725,12 +8725,20 @@ saveDraftBtn.addEventListener('click', async () => {
 });
 
 function extractPatientFromNote(text, fallback = {}){
-  const find = pattern => String(text || '').match(pattern)?.[1]?.trim();
+  const source = String(text || '').replace(/\r\n/g, '\n');
+  const stopLabels = 'Patient\\s+Name|Discharge\\s+Summary\\s+Name|Name|Age\\/Gender|Age|UHID|UHCID|Sex|Gender|IP\\s+No\\.?|Address|Consultant|DOA|DOD|Date';
+  const findField = labelPattern => {
+    const match = source.match(new RegExp(`(?:^|\\n|\\s)(?:${labelPattern}):\\s*([\\s\\S]*?)(?=\\s+(?:${stopLabels}):|\\n|$)`, 'i'));
+    return match?.[1]?.trim();
+  };
+  const ageGender = findField('Age\\/Gender');
+  const ageFromCombined = ageGender?.split('/')[0]?.trim();
+  const sexFromCombined = ageGender?.split('/').slice(1).join('/').trim();
   return {
-    name:find(/^(?:Patient\s+)?Name:\s*([^\n·]+)/im) || fallback?.name || 'NIL',
-    age:find(/^Age:\s*(.+)$/im) || fallback?.age || 'NIL',
-    uhid:find(/^UHID:\s*(.+)$/im) || fallback?.uhid || 'NIL',
-    sex:find(/^Sex:\s*(.+)$/im) || fallback?.sex || 'NIL'
+    name:findField('Patient\\s+Name|Discharge\\s+Summary\\s+Name|Name') || fallback?.name || 'NIL',
+    age:findField('Age') || ageFromCombined || fallback?.age || 'NIL',
+    uhid:findField('UHID|UHCID') || fallback?.uhid || 'NIL',
+    sex:findField('Sex|Gender') || sexFromCombined || fallback?.sex || 'NIL'
   };
 }
 
