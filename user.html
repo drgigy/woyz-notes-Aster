@@ -4181,9 +4181,10 @@ function refreshActivePatientIdentityFromText(record, text, {immediate = false} 
   if (!patientDataChanged(record.patientData, nextPatientData)) return;
   record.patientData = nextPatientData;
   markRecordDirty(record);
+  syncRecordCollections(record);
   clearTimeout(sidebarIdentityRefreshTimer);
   const refresh = () => {
-    if (records[activeIndex] === record) renderEntries();
+    renderEntries();
   };
   if (immediate) refresh();
   else sidebarIdentityRefreshTimer = setTimeout(refresh, 250);
@@ -4224,6 +4225,8 @@ function syncRecordCollections(record){
     : item;
   records = records.map(sync);
   allRecords = allRecords.map(sync);
+  const ownerRecords = allOwnerRecords.get(ownerUid);
+  if (ownerRecords) allOwnerRecords.set(ownerUid, ownerRecords.map(sync));
 }
 
 function updateOpAllEntryRecordFromEditor(editor){
@@ -8695,6 +8698,7 @@ saveDraftBtn.addEventListener('click', async () => {
   draft.admissionDate = admissionDate;
   draft.adminCopiedAt = null;
   draft.adminCopiedBy = null;
+  syncRecordCollections(draft);
   deleteBtn.classList.toggle('visible', canDeleteRecord(draft));
   updateDischargeButton(draft);
   renderEntries();
