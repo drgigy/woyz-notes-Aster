@@ -2218,6 +2218,9 @@
       background:rgba(255,255,255,.97);
       backdrop-filter:blur(12px);
     }
+    .mobile-bottom-actions.hidden{
+      display:none !important;
+    }
     .home-template-grid{
       grid-template-columns:1fr;
       gap:7px;
@@ -2481,7 +2484,7 @@
     </div>
   </main>
 
-  <nav class="mobile-bottom-actions" aria-label="Note actions">
+  <nav class="mobile-bottom-actions hidden" id="mobileBottomActions" aria-label="Note actions">
     <button class="mobile-action" id="mobileCopyBtn" aria-label="Copy note">
       Copy
     </button>
@@ -2853,6 +2856,7 @@ const mobileSidebarNewBtn = document.getElementById('mobileSidebarNewBtn');
 const mobileSidebarSettingsBtn = document.getElementById('mobileSidebarSettingsBtn');
 const mobileSidebarBackBtn = document.getElementById('mobileSidebarBackBtn');
 const mobileBackdrop = document.getElementById('mobileBackdrop');
+const mobileBottomActions = document.getElementById('mobileBottomActions');
 const mobileCopyBtn = document.getElementById('mobileCopyBtn');
 const mobileDeleteBtn = document.getElementById('mobileDeleteBtn');
 const mobileSaveBtn = document.getElementById('mobileSaveBtn');
@@ -3180,6 +3184,10 @@ function clearTimelineSelection(){
   selectedOpTimelineReviewIndex = null;
   selectedIpTimelineKey = null;
   selectedIpTimelineDate = null;
+}
+
+function setMobileBottomActionsVisible(visible){
+  mobileBottomActions.classList.toggle('hidden', !visible);
 }
 
 function renderTodayEntries(){
@@ -3643,6 +3651,7 @@ function fullVisitDateLabel(value){
 
 function renderPatientTimeline(key){
   homeModeActive = false;
+  setMobileBottomActionsVisible(true);
   const timelineRecords = timelineRecordsForKey(key);
   if (!timelineRecords.length){
     showEmptyDate('No previous notes found for this patient.');
@@ -3688,6 +3697,7 @@ function renderPatientTimeline(key){
 
 function renderOpPatientTimeline(key, entryId = selectedOpTimelineEntryId || 'all'){
   homeModeActive = false;
+  setMobileBottomActionsVisible(true);
   const timelineRecords = opTimelineRecordsForKey(key);
   if (!timelineRecords.length){
     showEmptyDate('No OP entries found for this patient.');
@@ -3790,6 +3800,7 @@ function openOpTimelineForRecord(record, entryId = null){
 
 function renderIpPatientTimeline(key, date = selectedIpTimelineDate || dateInputValue(selectedVisitDate)){
   homeModeActive = false;
+  setMobileBottomActionsVisible(true);
   const dateGroups = ipTimelineDateGroupsForKey(key);
   if (!dateGroups.length){
     showEmptyDate('No IP entries found for this patient.');
@@ -4616,6 +4627,7 @@ function subscribeToGroups(){
 function showEmptyDate(message = 'No notes saved for this date.'){
   activeIndex = null;
   homeModeActive = false;
+  setMobileBottomActionsVisible(false);
   selectedOpTimelineKey = null;
   selectedOpTimelineEntryId = 'all';
   selectedOpTimelineReviewIndex = null;
@@ -4635,6 +4647,7 @@ function showEmptyDate(message = 'No notes saved for this date.'){
 function showHomeScreen(){
   homeModeActive = true;
   activeIndex = null;
+  setMobileBottomActionsVisible(false);
   clearTimelineSelection();
   stopVoiceTimer();
   stopMediaTracks();
@@ -4988,6 +5001,7 @@ function removeNilSectionsForCopy(text){
 
 function selectEntry(i,{preserveDirtyEditor = false} = {}){
   homeModeActive = false;
+  setMobileBottomActionsVisible(true);
   activeIndex = i;
   selectedOpTimelineKey = null;
   selectedOpTimelineEntryId = 'all';
@@ -6151,6 +6165,7 @@ function renderVoiceDraftTemplate(draft){
 
 function renderVoiceWorkspace(){
   const draft = records[activeIndex];
+  setMobileBottomActionsVisible(true);
   updateContinueNoteButton();
   if (draft.transcription && !draft.voiceDraft){
     renderGeneratedNote(draft);
@@ -6161,6 +6176,7 @@ function renderVoiceWorkspace(){
 }
 
 function renderGeneratedNote(draft){
+  setMobileBottomActionsVisible(true);
   const title = draft.selectedMode || 'Visit Note';
   const displayText = anonymizeTextForRecord(displayNoteTextForRecord(draft, draft.transcription), draft);
   const canEdit = !anonymizeEnabled;
@@ -6210,6 +6226,7 @@ function renderGeneratedNote(draft){
 }
 
 function renderProcessingState(draft){
+  setMobileBottomActionsVisible(true);
   mainScroll.innerHTML = `
     <div class="processing-wrap">
       <div class="processing-content">
