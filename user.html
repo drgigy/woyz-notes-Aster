@@ -521,6 +521,9 @@
   .continuation-action.extend{ grid-column:2; justify-self:center; background:#2F2F32; color:#F7F7FB; font:900 17px 'Inter',sans-serif; }
   .continuation-action.extend.blink{ animation:extendBlink .85s ease-in-out infinite; }
   .continuation-action.stop{ grid-column:3; justify-self:end; background:#2F2F32; color:#FF514A; }
+  .continuation-action.control-label{ width:auto; min-width:96px; height:48px; border-radius:14px; padding:0 14px; font:900 13px/1.05 'Inter',sans-serif; letter-spacing:0; text-align:center; white-space:normal; }
+  .continuation-action.extend.control-label{ min-width:144px; font-size:12px; }
+  .continuation-action.stop.control-label{ background:#8F1F24; color:#fff; }
   .continuation-action:disabled{ opacity:.45; cursor:not-allowed; }
   .continuation-action svg{ width:28px; height:28px; }
   .continuation-mode-bar{ width:100%; display:none; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
@@ -2182,6 +2185,17 @@
       height:44px;
       box-shadow:0 8px 18px rgba(0,0,0,.22);
     }
+    .continuation-action.control-label{
+      min-width:74px;
+      height:40px;
+      border-radius:13px;
+      padding:0 10px;
+      font-size:11px;
+    }
+    .continuation-action.extend.control-label{
+      min-width:126px;
+      font-size:10.5px;
+    }
     .continuation-action svg{
       width:22px;
       height:22px;
@@ -3190,6 +3204,29 @@ function setMobileBottomActionsVisible(visible){
   mobileBottomActions.classList.toggle('hidden', !visible);
 }
 
+function voiceDraftInteractionLocked(){
+  return Boolean(
+    continuationState.open &&
+    continuationState.mode === 'new' &&
+    continuationState.targetId
+  );
+}
+
+function updateVoiceDraftLockUi(){
+  const locked = voiceDraftInteractionLocked();
+  appShell.classList.toggle('voice-draft-locked', locked);
+  [mobileListBtn,mobileHomeBtn,previousDateBtn,nextDateBtn,visitDateDisplay,todayBtn,mobileCopyBtn,mobileDeleteBtn,copyBtn,deleteBtn].forEach(button => {
+    if (!button) return;
+    button.disabled = locked;
+    button.setAttribute('aria-disabled', String(locked));
+  });
+  if (locked){
+    closeMobileSidebar();
+    mobileTemplateSheet.classList.remove('visible');
+    setMobileBottomActionsVisible(false);
+  }
+}
+
 function renderTodayEntries(){
   if (selectedVisitType === 'OP'){
     renderOpPatientEntries();
@@ -4159,14 +4196,14 @@ function recordMatchesOwnerAndId(record, ownerUid, firestoreId){
   return Boolean(record && firestoreId && record.firestoreId === firestoreId && noteOwnerUid(record) === ownerUid);
 }
 
-function markRecordDirty(record,{generated = false} = {}){
+function markRecordDirty(record,{generated = false, saved = false} = {}){
   const key = recordLocalKey(record);
   if (!key) return;
   localDirtyRecords.set(key,{
     transcription:record.transcription || '',
     patientData:record.patientData || null,
     generated,
-    saved:false,
+    saved,
     updatedAt:Date.now()
   });
 }
@@ -4204,7 +4241,7 @@ function applyLocalDirtyRecord(record){
     transcription:dirty.transcription,
     patientData:dirty.patientData || record.patientData,
     ...(dirty.generated ? {kind:'generated', voiceDraft:false, transcribing:false, status:'Note ready'} : {}),
-    saved:false
+    saved:dirty.saved === true
   };
 }
 
@@ -4388,6 +4425,27 @@ function deleteExpiredNotes(recordsToCheck = []){
   });
 }
 
+function isEmptyAbandonedVoiceDraft(record){
+  if (!record || record.isDeleted || record.voiceDraft !== true || noteOwnerUid(record) !== currentUser?.uid) return false;
+  if (String(record.transcription || '').trim()) return false;
+  if (record.recording || record.hasStarted || record.transcribing) return false;
+  if (pendingNewVoiceDockId && record.firestoreId === pendingNewVoiceDockId) return false;
+  if (continuationState.open && continuationState.mode === 'new' && recordMatchesOwnerAndId(record, continuationState.targetOwnerUid, continuationState.targetId)) return false;
+  return true;
+}
+
+function deleteEmptyAbandonedVoiceDrafts(recordsToCheck = []){
+  recordsToCheck.forEach(record => {
+    if (!isEmptyAbandonedVoiceDraft(record)) return;
+    const key = recordLocalKey(record);
+    if (!key || expiryCleanupKeys.has(key)) return;
+    expiryCleanupKeys.add(key);
+    deleteDoc(noteDocRef(record))
+      .catch(error => console.error('Empty voice draft cleanup failed:', error))
+      .finally(() => expiryCleanupKeys.delete(key));
+  });
+}
+
 async function latestVisitDateForSelectedType(){
   const owners = sharedOwnerIds.length ? sharedOwnerIds : [currentUser.uid];
   const snapshots = await Promise.all(owners.map(ownerUid => getDocs(collection(db,'users',ownerUid,'notes')).catch(() => null)));
@@ -4459,6 +4517,7 @@ function closeMobileSidebar(){
 }
 
 function openMobileSidebar(){
+  if (voiceDraftInteractionLocked()) return;
   appShell.classList.add('sidebar-open');
 }
 
@@ -4531,7 +4590,8 @@ function subscribeToSelectedDate({allowLatestDateFallback = false} = {}){
       receivedOwners += ownerRecords.has(ownerUid) ? 0 : 1;
       const ownerNotes = snapshot.docs.map(docSnap => noteFromSnapshot(docSnap, ownerUid));
       deleteExpiredNotes(ownerNotes);
-      ownerRecords.set(ownerUid, ownerNotes.filter(note => !noteExpired(note)));
+      deleteEmptyAbandonedVoiceDrafts(ownerNotes);
+      ownerRecords.set(ownerUid, ownerNotes.filter(note => !noteExpired(note) && !isEmptyAbandonedVoiceDraft(note)));
       await applyRecords();
     }, error => {
       console.error('Unable to load notes:',error);
@@ -4563,7 +4623,8 @@ function subscribeToAllRecords(){
     const unsubscribe = onSnapshot(collection(db,'users',ownerUid,'notes'), snapshot => {
       const ownerNotes = snapshot.docs.map(docSnap => noteFromSnapshot(docSnap, ownerUid));
       deleteExpiredNotes(ownerNotes);
-      allOwnerRecords.set(ownerUid, ownerNotes.filter(note => !noteExpired(note)).map(applyLocalDirtyRecord));
+      deleteEmptyAbandonedVoiceDrafts(ownerNotes);
+      allOwnerRecords.set(ownerUid, ownerNotes.filter(note => !noteExpired(note) && !isEmptyAbandonedVoiceDraft(note)).map(applyLocalDirtyRecord));
       allRecords = Array.from(allOwnerRecords.values()).flat();
       if (searchScope === 'all'){
         renderEntries();
@@ -4648,6 +4709,7 @@ function showEmptyDate(message = 'No notes saved for this date.'){
 }
 
 function showHomeScreen(){
+  if (voiceDraftInteractionLocked()) return;
   homeModeActive = true;
   activeIndex = null;
   setMobileBottomActionsVisible(false);
@@ -6168,7 +6230,7 @@ function renderVoiceDraftTemplate(draft){
 
 function renderVoiceWorkspace(){
   const draft = records[activeIndex];
-  setMobileBottomActionsVisible(true);
+  setMobileBottomActionsVisible(false);
   updateContinueNoteButton();
   if (draft.transcription && !draft.voiceDraft){
     renderGeneratedNote(draft);
@@ -6561,10 +6623,15 @@ function renderContinuationDock(){
   continuationExtendBtn.style.display = continuationState.hasStarted && !hasSavedAudio ? 'grid' : 'none';
   continuationStopBtn.style.display = continuationState.hasStarted ? 'grid' : 'none';
   continuationCloseBtn.style.display = continuationState.open ? 'inline-flex' : 'none';
-  continuationPauseBtn.innerHTML = continuationState.recording
-    ? '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>'
-    : '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7L8 5Z"/></svg>';
+  continuationPauseBtn.classList.toggle('control-label', continuationState.hasStarted);
+  continuationExtendBtn.classList.toggle('control-label', continuationState.hasStarted);
+  continuationStopBtn.classList.toggle('control-label', continuationState.hasStarted);
+  continuationPauseBtn.textContent = continuationState.recording ? 'Pause' : 'Resume';
+  continuationExtendBtn.textContent = 'Extend 5 minutes';
+  continuationStopBtn.textContent = 'Finish';
   continuationPauseBtn.setAttribute('aria-label', continuationState.recording ? 'Pause continuation dictation' : 'Resume continuation dictation');
+  continuationExtendBtn.setAttribute('aria-label', 'Extend dictation by five minutes');
+  continuationStopBtn.setAttribute('aria-label', 'Finish and generate note');
   continuationStartBtn.disabled = continuationState.processing || isWaitingForDraft;
   continuationPauseBtn.disabled = continuationState.processing || isWaitingForDraft;
   continuationExtendBtn.disabled = continuationState.processing || isWaitingForDraft;
@@ -6579,6 +6646,7 @@ function renderContinuationDock(){
   recordSub.textContent = continuationState.open && continuationState.mode === 'new'
     ? (continuationState.recording ? 'Listening...' : 'Voice draft open')
     : 'Tap to record a note';
+  updateVoiceDraftLockUi();
   updateContinueNoteButton();
   updateTimer();
 }
@@ -6873,9 +6941,11 @@ async function finishNewVoiceDraft(audioBlob, apiKey, onRetry){
   draft.patientData = generated.patientData;
   draft.voiceDraft = false;
   draft.kind = 'generated';
-  draft.saved = false;
+  draft.saved = true;
+  draft.everSaved = true;
+  draft.isDraft = false;
   draft.status = 'Note ready';
-  markRecordDirty(draft,{generated:true});
+  markRecordDirty(draft,{generated:true,saved:true});
   const draftVisitType = 'OP';
   const selectedDateString = dateInputValue(selectedVisitDate);
   const admissionDate = null;
@@ -6886,10 +6956,20 @@ async function finishNewVoiceDraft(audioBlob, apiKey, onRetry){
     records[liveIndex] = applyLocalDirtyRecord({...records[liveIndex], ...draft, transcribing:false});
     activeIndex = liveIndex;
   }
-  renderGeneratedNote(records[activeIndex] || draft);
+  const visibleDraft = records[activeIndex] || draft;
+  renderEntries();
+  saveDraftBtn.classList.add('visible');
+  saveDraftBtn.querySelector('span').textContent = 'Save';
+  deleteBtn.classList.toggle('visible', canDeleteRecord(visibleDraft));
+  updateDischargeButton(visibleDraft);
+  copyBtn.style.display = 'flex';
+  renderGeneratedNote(visibleDraft);
   persistRecord(draft,{
     kind:'generated',
     voiceDraft:false,
+    isDraft:false,
+    saved:true,
+    everSaved:true,
     transcription:draft.transcription,
     patientData:draft.patientData,
     selectedMode:draft.selectedMode,
@@ -6897,7 +6977,10 @@ async function finishNewVoiceDraft(audioBlob, apiKey, onRetry){
     ...(draftVisitType === 'IP' ? {admissionDate} : {admissionDate:null}),
     status:'Note ready',
     expiresAt:noteExpiryTimestamp(),
+    userSavedAt:serverTimestamp(),
     updatedAt:serverTimestamp()
+  }).then(() => {
+    clearRecordDirty(draft);
   }).catch(error => {
     console.error('Generated continuation note save failed:', error);
     const visibleDraft = records[activeIndex] || draft;
@@ -8011,6 +8094,7 @@ function updateDateNavigation(){
 }
 
 function moveVisitDate(days){
+  if (voiceDraftInteractionLocked()) return;
   const next = new Date(selectedVisitDate);
   next.setDate(next.getDate() + days);
   selectedVisitDate = clampAccessibleVisitDate(next);
@@ -8026,6 +8110,7 @@ function moveVisitDate(days){
 previousDateBtn.addEventListener('click', () => moveVisitDate(-1));
 nextDateBtn.addEventListener('click', () => moveVisitDate(1));
 visitDateDisplay.addEventListener('click', () => {
+  if (voiceDraftInteractionLocked()) return;
   if (typeof visitDateInput.showPicker === 'function'){
     visitDateInput.showPicker();
   }else{
@@ -8034,6 +8119,7 @@ visitDateDisplay.addEventListener('click', () => {
   }
 });
 todayBtn.addEventListener('click', () => {
+  if (voiceDraftInteractionLocked()) return;
   selectedVisitDate = maxAccessibleVisitDate();
   if (searchScope === 'all'){
     searchScope = 'today';
@@ -8044,6 +8130,7 @@ todayBtn.addEventListener('click', () => {
   subscribeToSelectedDate();
 });
 visitDateInput.addEventListener('change', () => {
+  if (voiceDraftInteractionLocked()) return;
   const [year,month,day] = visitDateInput.value.split('-').map(Number);
   if (year && month && day) selectedVisitDate = clampAccessibleVisitDate(new Date(year,month-1,day));
   if (searchScope === 'all'){
@@ -8109,9 +8196,10 @@ searchScopeToggle.addEventListener('click', event => {
   if (!button) return;
   setSearchScope(button.dataset.searchScope);
 });
-mobileMenuBtn.addEventListener('click', openMobileSidebar);
-mobileListBtn.addEventListener('click', openMobileSidebar);
+mobileMenuBtn.addEventListener('click', () => { if (!voiceDraftInteractionLocked()) openMobileSidebar(); });
+mobileListBtn.addEventListener('click', () => { if (!voiceDraftInteractionLocked()) openMobileSidebar(); });
 mobileSidebarNewBtn.addEventListener('click', () => {
+  if (voiceDraftInteractionLocked()) return;
   closeMobileSidebar();
   showHomeScreen();
 });
@@ -8129,8 +8217,8 @@ topbarPatient.addEventListener('keydown', event => {
   }
 });
 mobileBackdrop.addEventListener('click', closeMobileSidebar);
-mobileCopyBtn.addEventListener('click', () => copyBtn.click());
-mobileDeleteBtn.addEventListener('click', () => deleteBtn.click());
+mobileCopyBtn.addEventListener('click', () => { if (!voiceDraftInteractionLocked()) copyBtn.click(); });
+mobileDeleteBtn.addEventListener('click', () => { if (!voiceDraftInteractionLocked()) deleteBtn.click(); });
 mobileHomeBtn.addEventListener('click', showHomeScreen);
 mobileTemplateSheet.addEventListener('click', async event => {
   const button = event.target.closest('[data-mobile-template-mode]');
@@ -8187,6 +8275,7 @@ document.addEventListener('click', event => {
 document.addEventListener('selectionchange', captureEditorSelection);
 
 copyBtn.addEventListener('click', async () => {
+  if (voiceDraftInteractionLocked()) return;
   const activeRecord = selectedOpTimelineRecord() || (activeIndex !== null ? records[activeIndex] : null);
   if (!activeRecord) return;
   const sourceText = currentRecordSourceText(activeRecord);
@@ -8743,6 +8832,7 @@ function extractPatientFromNote(text, fallback = {}){
 }
 
 deleteBtn.addEventListener('click', async () => {
+  if (voiceDraftInteractionLocked()) return;
   const draft = currentEditableRecord() || opAllEntriesDeleteRecord();
   if (!draft?.firestoreId || !currentUser) return;
   const noteName = draft.patientData?.name || draft.name || 'this selected note';
