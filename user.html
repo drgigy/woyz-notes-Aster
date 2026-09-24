@@ -2960,7 +2960,7 @@ const GEMINI_PROMPTS = {
   'Review dictation':`You are an expert medical transcription assistant. The doctor states the patient name, age, and UHID at the beginning; extract these identifiers into their JSON fields and do not repeat that opening identification in the text unless clinically necessary. Convert the remaining Malayalam, English, or Kerala Manglish dictation into complete professional clinical English suitable for a review note. Preserve every clearly dictated clinical fact, chronology, medicine, dose, route, frequency, duration, investigation, numeric value, unit, examination finding, assessment, advice, instruction, referral, and follow-up exactly as dictated. Do not summarize, shorten, condense, compress, omit, merge unrelated facts, or remove repeated clinically relevant details. Translate Malayalam clinical content and transliterate names into English. Correct grammar and punctuation, but never invent, infer, recommend, add, or remove information. If investigations are dictated, use the exact heading "Review of Investigations:" and format each investigation/report as a numbered item, with each report starting on a new line. If an investigation has multiple findings, put each finding on its own unnumbered line below that report. If blood investigations are dictated, group all blood tests from the same date under one numbered item and list each blood value below it on its own unnumbered line, adding standard conventional units when absent. If existing/background medicines are dictated, use the exact heading "Current Medications:" and number only those current medicines. If the doctor explicitly dictates a prescription/Rx section, start a separate exact heading "Prescription:" and number only prescription medicines from 1 again. Never continue numbering from Current Medications into Prescription, Advice, Instructions, or Follow-up. If advice, instructions, consultation notes, or treatment changes are dictated, keep them under the dictated heading or a suitable clinical heading and number them separately from Prescription. Return only the requested JSON object.`,
   'Reply letter':`You are a clinical reply letter drafting assistant. The doctor states the patient name, age, and UHID at the beginning; extract these identifiers into their JSON fields and exclude the opening identification from the letter unless it belongs naturally in the clinical content. Create a clean reply letter from only the dictated audio. Correct spelling and grammar and make sentences complete. Do not add, infer, assume, hallucinate, recommend, or remove any clinical information. Use a polite professional letter style and keep the original meaning exactly. The text must begin exactly with "To," followed by the dictated recipient name, credentials, department, hospital, or address, each on its own line when dictated. Leave one blank line before the main paragraphs. Do not use a salutation or a Reply Letter heading. End with "Thank you" one blank line below the final paragraph. Do not include sender credentials, signature, or footer. If a detail is not dictated, omit it; do not write placeholders or "Not dictated". Return only the requested JSON object.`,
   'Medical certificate':`You are an expert medical certificate drafting assistant. The doctor states the patient name, age, and UHID at the beginning; extract them exactly into their JSON fields. Create a clean medical certificate from only the dictated audio. Correct spelling and grammar and make sentences complete. Do not add, infer, assume, hallucinate, recommend, or remove any clinical or administrative information. Use a simple certificate style. Use today's date only when no date is dictated. The certificateBody must begin with "This is to certify that" and contain one or more clear paragraphs. Include patient details only if dictated or provided in the JSON patient fields. If dates, rest period, diagnosis, fitness, restrictions, or purpose are dictated, include them exactly. If a detail is not dictated, omit it; do not write placeholders or "Not dictated". Do not include "To whomsoever it may concern", "Thank you", doctor credentials, or a signature in certificateBody. Return only the requested JSON object.`,
-  'Discharge summary':`You are an emergency medicine discharge summary drafting assistant. Use the uploaded ED discharge summary PDF as the structural reference, but create only the copy-paste body text for the hospital discharge page from the clearly dictated audio. The doctor states the patient name, age, and UHID at the beginning; extract those identifiers exactly into JSON fields. The output text must be plain editable text, not markdown. Do not include "Discharge Summary", hospital headers, Aster heading, title blocks, doctor lists, logo text, department heading, prepared-by details, contact footer, signature, or printout formatting. Start with a compact patient details block in exactly three lines: "Name: ...    Age/Gender: ...    UHID: ...    IP No.: ..."; "Address: ..."; "Consultant: ...    DOA: ...    DOD: ...". Then use this exact section order: DIAGNOSIS; PROCEDURE DONE; DRUG ALLERGY; HISTORY; CLINICAL EXAMINATION; INVESTIGATIONS; LAB; RADIOLOGY; PROCEDURE / OPERATION NOTES; OTHERS; GENERAL INSTRUCTIONS; REASON FOR ADMISSION; COURSE IN HOSPITAL; MEDICATIONS ADMINISTERED; CONDITION AT DISCHARGE; ADVICE ON DISCHARGE; MEDICATIONS; HOME MEDICATIONS; DIET ADVICE; FOLLOW UP DATE; REVIEW; WHEN TO OBTAIN URGENT CARE. Put each clinical section heading on its own line with a colon, then put content below it. Leave one blank line between sections. Never place clinical section headings in the same paragraph. Keep the PDF-style clinical layout: in CLINICAL EXAMINATION, write Airway, Breathing, Circulation, Disability, Exposure, Secondary survey, C SPINE, CCT, PCT, LOG roll, EFAST, Head, Face, Eyes, Oral cavity, Ear, Nose, Chest, Abdomen, Musculoskeletal System, Right upper limb, Right lower limb, and Local examination on separate lines when spoken. Keep injury lists and medication lists as one item per line. Preserve every clearly dictated clinical fact, chronology, investigation, value, procedure, consultation note, medicine, dose, route, frequency, duration, discharge condition, and advice exactly in meaning. Do not add, infer, assume, recommend, hallucinate, or remove any clinical information. Use NIL for unsupported sections. Return only the requested JSON object.`
+  'Discharge summary':`You are an emergency medicine discharge summary drafting assistant. Use the uploaded ED discharge summary PDF as the structural reference, but create only the copy-paste body text for the hospital discharge page from the clearly dictated audio. The doctor states the patient name, age, and UHID at the beginning; extract those identifiers exactly into JSON fields. The output text must be plain editable text, not markdown. Do not include "Discharge Summary", hospital headers, Aster heading, title blocks, doctor lists, logo text, department heading, prepared-by details, contact footer, signature, or printout formatting. Start with a compact patient details block in exactly three lines: "Name: ...    Age/Gender: ...    UHID: ...    IP No.: ..."; "Address: ..."; "Consultant: ...    DOA: ...    DOD: ...". Then use this exact section order: DIAGNOSIS; PROCEDURE DONE; DRUG ALLERGY; HISTORY; CLINICAL EXAMINATION; INVESTIGATIONS; LAB; RADIOLOGY; PROCEDURE / OPERATION NOTES; OTHERS; GENERAL INSTRUCTIONS; REASON FOR ADMISSION; COURSE IN HOSPITAL; MEDICATIONS ADMINISTERED; CONDITION AT DISCHARGE; ADVICE ON DISCHARGE; MEDICATIONS; HOME MEDICATIONS; DIET ADVICE; FOLLOW UP DATE; REVIEW; WHEN TO OBTAIN URGENT CARE. Put each clinical section heading on its own line with a colon, then put content below it. Leave one blank line between sections. Never place clinical section headings in the same paragraph. In LAB, put every lab parameter and value on the same line after the colon, for example "Hemoglobin: 12.5 g/dL"; never put the value on the next line below the lab parameter. Add standard conventional units for common blood values when units are not dictated, while preserving the dictated numeric value exactly. Keep the PDF-style clinical layout: in CLINICAL EXAMINATION, write Airway, Breathing, Circulation, Disability, Exposure, Secondary survey, C SPINE, CCT, PCT, LOG roll, EFAST, Head, Face, Eyes, Oral cavity, Ear, Nose, Chest, Abdomen, Musculoskeletal System, Right upper limb, Right lower limb, and Local examination on separate lines when spoken. Keep injury lists and medication lists as one item per line. Preserve every clearly dictated clinical fact, chronology, investigation, value, procedure, consultation note, medicine, dose, route, frequency, duration, discharge condition, and advice exactly in meaning. Do not add, infer, assume, recommend, hallucinate, or remove any clinical information. Use NIL for unsupported sections. Return only the requested JSON object.`
 };
 GEMINI_PROMPTS.ambient += ' For this app, do not generate a Prescription, Rx, or drug dispensing section. Newly advised medicines and investigations must stay under Treatment Plan only.';
 
@@ -5248,6 +5248,7 @@ function formatDischargeSummaryText(text){
     normalized = normalized.split(`${token}:`).join(`${canonical}:`);
   });
   normalized = compactDischargeDemographicHeader(normalized);
+  normalized = normalizeDischargeLabValues(normalized);
   DISCHARGE_INLINE_LABELS
     .sort((a,b) => b.length - a.length)
     .forEach(label => {
@@ -5270,6 +5271,46 @@ function formatDischargeSummaryText(text){
     .replace(/\n{3,}/g, '\n\n')
     .trim();
   return normalized;
+}
+
+function isDischargeSectionHeadingLine(line){
+  return new RegExp(`^(?:${DISCHARGE_SUMMARY_HEADINGS.map(escapeRegExp).join('|')})\\s*:`, 'i').test(String(line || '').trim());
+}
+
+function normalizeDischargeLabValues(text){
+  const labLabelPattern = /^(Hemoglobin|Hb|ESR|CRP|Total count|TC|Platelet count|Platelets?|Creatinine|Urea|RBS|FBS|PPBS|HbA1c|Sodium|Potassium|Chloride|SGOT|SGPT|ALT|AST|Bilirubin|Total bilirubin|Direct bilirubin|Indirect bilirubin|Total cholesterol|Triglycerides|HDL|LDL|Homocysteine)\s*:\s*(.*)$/i;
+  const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
+  const result = [];
+  let inLab = false;
+  for (let index = 0; index < lines.length; index += 1){
+    const line = lines[index];
+    const trimmed = line.trim();
+    if (/^LAB\s*:/i.test(trimmed)){
+      inLab = true;
+      result.push(line);
+      continue;
+    }
+    if (inLab && trimmed && isDischargeSectionHeadingLine(trimmed) && !/^LAB\s*:/i.test(trimmed)){
+      inLab = false;
+    }
+    if (inLab){
+      const match = trimmed.match(labLabelPattern);
+      if (match && !match[2].trim()){
+        const next = lines[index + 1]?.trim() || '';
+        if (next && !labLabelPattern.test(next) && !isDischargeSectionHeadingLine(next)){
+          result.push(addStandardBloodUnit(`${match[1]}: ${next}`));
+          index += 1;
+          continue;
+        }
+      }
+      if (match && match[2].trim()){
+        result.push(addStandardBloodUnit(trimmed));
+        continue;
+      }
+    }
+    result.push(line);
+  }
+  return result.join('\n');
 }
 
 function compactDischargeDemographicHeader(text){
@@ -7663,8 +7704,13 @@ function formatBloodInvestigationItem(item){
 }
 
 function addStandardBloodUnit(line){
-  const cleaned = String(line || '').replace(/\s*[.]$/, '').trim();
-  if (!cleaned || /(?:g\/dL|mg\/dL|mmol\/L|mEq\/L|cells\/cumm|lakh\/cumm|U\/L|mm\/hr|mg\/L|%|µIU\/mL|mcIU\/mL)/i.test(cleaned)) return cleaned;
+  const cleaned = String(line || '')
+    .replace(/\s*[.]$/, '')
+    .replace(/\b(\d+)\.\s+(\d+)\b/g, '$1.$2')
+    .replace(/\blakhs\b/gi, 'lakh')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!cleaned || /(?:g\/dL|mg\/dL|mmol\/L|mEq\/L|cells\/cumm|\/cu\.?mm|\/cumm|lakh\/cumm|U\/L|mm\/hr|mg\/L|%|µmol\/L|umol\/L|µIU\/mL|mcIU\/mL)/i.test(cleaned)) return cleaned;
   const unitRules = [
     [/^(Hemoglobin|Hb)\s*:\s*([\d.]+)\s*$/i, '$1: $2 g/dL'],
     [/^(Total count|TC)\s*:\s*([\d.]+)\s*$/i, '$1: $2 cells/cumm'],
