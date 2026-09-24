@@ -3499,6 +3499,7 @@ function recordHasPrescription(record){
 
 function opTimelineKind(record){
   const mode = normalizedEntryMode(record).toLowerCase();
+  if (mode.includes('discharge summary')) return 'Discharge Summary';
   if (mode.includes('letter')) return 'Letter';
   if (mode.includes('certificate')) return 'Certificate';
   if (mode.includes('review note')) return 'Review Note';
@@ -5439,13 +5440,41 @@ function displayNoteTextForRecord(record, text){
   return noteVisitType(record) === 'IP' ? organizeIpReviewNotes(formatted) : formatted;
 }
 
+function shouldBoldNoteLabel(label, line){
+  const normalizedLabel = String(label || '').replace(/:$/, '').trim();
+  const lineText = String(line || '').trim();
+  const templateHeadings = new Set([
+    ...VISIT_NOTE_TEMPLATE_HEADINGS,
+    ...DISCHARGE_TEMPLATE_HEADINGS,
+    'Prescription',
+    'Review Notes',
+    'Review Note',
+    'Patient Name',
+    'Age',
+    'UHID',
+    'Sex',
+    'Name',
+    'Age/Gender',
+    'IP No.',
+    'Address',
+    'Consultant',
+    'DOA',
+    'DOD'
+  ].map(item => item.toLowerCase()));
+  if (!templateHeadings.has(normalizedLabel.toLowerCase())) return false;
+  if (DISCHARGE_INLINE_LABELS.some(item => item.toLowerCase() === normalizedLabel.toLowerCase())) return false;
+  return Boolean(lineText);
+}
+
 function simpleRichNoteHtml(text){
   return String(text || '')
     .split('\n')
     .map(line => {
       const escaped = escapeHtml(line);
       if (/^Review Notes:$/i.test(line.trim())) return `<span class="review-notes-title">${escaped}</span>`;
-      const formatted = escaped.replace(/^([^:<\n]{2,90}:)(\s*)/, '<strong>$1</strong>$2');
+      const formatted = escaped.replace(/^([^:<\n]{2,90}:)(\s*)/, (match, label, spacing) => (
+        shouldBoldNoteLabel(label, line) ? `<strong>${label}</strong>${spacing}` : match
+      ));
       return /^Review Note(?:\s*\([^)]*\))?:$/i.test(line.trim()) ? `<hr class="review-note-divider">${formatted}` : formatted;
     })
     .join('<br>');
@@ -7116,19 +7145,105 @@ function labelledLine(label, value){
   return content ? `${label}: ${content}` : '';
 }
 
+function dischargeNarrativeSentence(prefix, value){
+  const content = lightCompleteSentences(value);
+  return content ? `${prefix}${content}` : '';
+}
+
+function sentenceLowerFirst(text){
+  const value = String(text || '').trim();
+  return value ? value.charAt(0).toLowerCase() + value.slice(1) : '';
+}
+
+function previousTreatmentDischargeSentence(value){
+  const content = lightCompleteSentences(value);
+  if (!content) return '';
+  if (/^initially\b/i.test(content)) return content.replace(/^Initially\b/, 'Patient was initially');
+  return `Previous treatment included ${sentenceLowerFirst(content)}`;
+}
+
+function nutritionalDischargeSentence(value){
+  const content = lightCompleteSentences(value);
+  if (!content) return '';
+  if (/^patient\b/i.test(content)) return content;
+  return `Nutritional status was ${sentenceLowerFirst(content)}`;
+}
+
+function generatedDischargeHistory(sections){
+  const chiefComplaints = sections('Chief complaints');
+  const history = sections('History');
+  const previousTreatment = sections('Previous treatment');
+  const nutritionalStatus = sections('Nutritional status');
+  return [
+    dischargeNarrativeSentence('Patient came with complaints of ', chiefComplaints),
+    lightCompleteSentences(history),
+    previousTreatmentDischargeSentence(previousTreatment),
+    nutritionalDischargeSentence(nutritionalStatus)
+  ].filter(Boolean).join('\n');
+}
+
+function splitClinicalFacts(text){
+  return String(text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\b(Airway|Breathing|Circulation|Disability|Exposure|Chest|Heart rate|Blood pressure|Capillary refill time|CRT|GRBS|GCS|Temperature|Saturation|SpO2|Respiratory rate)\s*:/gi, '\n$1: ')
+    .split(/\n|(?<=[.!?])\s+/)
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+function appendClinicalFact(groups, groupName, fact){
+  const cleaned = lightCompleteSentences(fact);
+  if (!cleaned || isNilLike(cleaned)) return;
+  groups[groupName].push(cleaned.replace(/\n+/g, ' '));
+}
+
+function generatedDischargeClinicalExamination(examinationText){
+  const facts = splitClinicalFacts(examinationText);
+  if (!facts.length) return '';
+  const groups = {
+    intro:[],
+    Airway:[],
+    Breathing:[],
+    Circulation:[],
+    Disability:[],
+    Exposure:[],
+    other:[]
+  };
+  facts.forEach(fact => {
+    const lower = fact.toLowerCase();
+    if (/patient\s+(?:is\s+)?conscious|oriented|alert/.test(lower)){
+      appendClinicalFact(groups, 'intro', fact);
+    }else if (/^airway\b|airway\s+patent|patent airway/.test(lower)){
+      appendClinicalFact(groups, 'Airway', fact.replace(/^Airway\s*:\s*/i, ''));
+    }else if (/^breathing\b|^chest\b|spo2|saturation|respiratory rate|air entry|rhonchi|crepitation|wheeze|chest movement|dullness/.test(lower)){
+      appendClinicalFact(groups, 'Breathing', fact.replace(/^(Breathing|Chest)\s*:\s*/i, '$1: '));
+    }else if (/^circulation\b|heart rate|blood pressure|\bbp\b|capillary refill|crt|peripher|pulse/.test(lower)){
+      appendClinicalFact(groups, 'Circulation', fact.replace(/^Circulation\s*:\s*/i, ''));
+    }else if (/^disability\b|\bgcs\b|\bgrbs\b|pupil/.test(lower)){
+      appendClinicalFact(groups, 'Disability', fact.replace(/^Disability\s*:\s*/i, ''));
+    }else if (/^exposure\b|temperature|rash|injur|swelling|abrasion|wound/.test(lower)){
+      appendClinicalFact(groups, 'Exposure', fact.replace(/^Exposure\s*:\s*/i, ''));
+    }else{
+      appendClinicalFact(groups, 'other', fact);
+    }
+  });
+  const lines = [];
+  if (groups.intro.length) lines.push(groups.intro.join(' '));
+  ['Airway','Breathing','Circulation','Disability','Exposure'].forEach(label => {
+    if (groups[label].length) lines.push(`${label}: ${groups[label].join(' ')}`);
+  });
+  if (groups.other.length) lines.push(...groups.other);
+  return lines.join('\n').trim();
+}
+
 function localDischargeSummaryFromVisitNote(record, sourceText){
   const identity = patientIdentity(record);
   const config = templateHeadingConfigForRecord({selectedMode:'Visit note'});
   const parsed = parseTemplateSectionText(sourceText, config).sections;
   const section = heading => nonNilSection(parsed.get(heading));
   const diagnosis = section('Final diagnosis') || section('Provisional diagnosis');
-  const history = [
-    labelledLine('Chief complaints', section('Chief complaints')),
-    labelledLine('History', section('History')),
-    labelledLine('Previous treatment', section('Previous treatment')),
-    labelledLine('Nutritional status', section('Nutritional status'))
-  ].filter(Boolean).join('\n');
-  const examination = lightCompleteSentences(section('Examination'));
+  const history = generatedDischargeHistory(section);
+  const examination = generatedDischargeClinicalExamination(section('Examination'));
   const planOfCare = lightCompleteSentences(section('Plan of care'));
   const allergies = lightCompleteSentences(section('Allergies'));
   const lines = [
