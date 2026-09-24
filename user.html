@@ -7445,6 +7445,16 @@ function headingLookupFromConfig(config){
   return lookup;
 }
 
+function sectionHeadingFromCandidate(value, lookup){
+  const cleaned = String(value || '')
+    .trim()
+    .replace(/^[-•]\s*/, '')
+    .replace(/^\d+[.)]\s*/, '')
+    .replace(/\s*[:：]\s*$/, '')
+    .trim();
+  return cleaned ? lookup.get(canonicalHeadingKey(cleaned)) : null;
+}
+
 function parseTemplateSectionText(text, config){
   const lookup = headingLookupFromConfig(config);
   const headingPattern = /^([^:\n]{2,110})\s*:\s*(.*)$/;
@@ -7459,11 +7469,11 @@ function parseTemplateSectionText(text, config){
   lines.forEach(rawLine => {
     const trimmed = rawLine.trim();
     const match = trimmed.match(headingPattern);
-    const canonical = match ? lookup.get(canonicalHeadingKey(match[1])) : null;
+    const canonical = match ? sectionHeadingFromCandidate(match[1], lookup) : sectionHeadingFromCandidate(trimmed, lookup);
     if (canonical){
       current = canonical;
       if (!sections.has(current)) sections.set(current, []);
-      const inlineValue = match[2].trim();
+      const inlineValue = match ? match[2].trim() : '';
       if (inlineValue) sections.get(current).push(inlineValue);
       return;
     }
@@ -7799,6 +7809,13 @@ function formatAddOnContinuationText(text, config = templateHeadingConfigForReco
   const sectionBoundary = `(?:${headingAlternates.map(escapeRegExp).join('|')})`;
   const numberedHeadingPrefix = '\\s*(?:\\d+[.)]\\s*)?';
   const normalized = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map(line => {
+      const canonical = sectionHeadingFromCandidate(line, lookup);
+      return canonical ? `${canonical}:` : line;
+    })
+    .join('\n')
     .replace(new RegExp(`${numberedHeadingPrefix}(${sectionBoundary})\\s*:\\s*`, 'gi'), (match, label) => {
       const canonical = lookup.get(canonicalHeadingKey(label));
       return canonical ? `\n\n${canonical}:\n` : '\n\n';
