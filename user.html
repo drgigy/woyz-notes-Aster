@@ -3090,6 +3090,17 @@ Final diagnosis:
 NIL`;
 
 const OP_VOICE_NOTE_TEMPLATE = VOICE_NOTE_TEMPLATE;
+const VISIT_NOTE_TEMPLATE_HEADINGS = [
+  'Chief complaints',
+  'Allergies',
+  'History',
+  'Previous treatment',
+  'Examination',
+  'Nutritional status',
+  'Plan of care',
+  'Provisional diagnosis',
+  'Final diagnosis'
+];
 
 const DISCHARGE_SUMMARY_TEMPLATE = `Name: NIL    Age/Gender: NIL    UHID: NIL    IP No.: NIL
 Address: NIL
@@ -5206,6 +5217,13 @@ const DISCHARGE_SUMMARY_HEADINGS = [
   'MEDICATIONS ADMINISTERED','CONDITION AT DISCHARGE','ADVICE ON DISCHARGE',
   'MEDICATIONS','HOME MEDICATIONS','DIET ADVICE','FOLLOW UP DATE','REVIEW','WHEN TO OBTAIN URGENT CARE'
 ];
+const DISCHARGE_TEMPLATE_HEADINGS = [
+  'DIAGNOSIS','PROCEDURE DONE','DRUG ALLERGY','HISTORY','CLINICAL EXAMINATION',
+  'INVESTIGATIONS','LAB','RADIOLOGY','PROCEDURE / OPERATION NOTES','OTHERS',
+  'GENERAL INSTRUCTIONS','REASON FOR ADMISSION','COURSE IN HOSPITAL',
+  'MEDICATIONS ADMINISTERED','CONDITION AT DISCHARGE','ADVICE ON DISCHARGE',
+  'MEDICATIONS','HOME MEDICATIONS','DIET ADVICE','FOLLOW UP DATE','REVIEW','WHEN TO OBTAIN URGENT CARE'
+];
 const DISCHARGE_INLINE_LABELS = [
   'Airway','Breathing','Circulation','Disability','Exposure','Secondary survey','Secondary Survey',
   'C SPINE','C-SPINE','CCT','C-CT','PCT','P-CT','LOG roll','EFAST','E-FAST',
@@ -6943,8 +6961,9 @@ async function stopAndAppendContinuation(){
         appendDocumentText(generated.text, continuationState.documentMode);
         setContinuationStatus(`${continuationState.documentMode} added. Review and save.`);
       }else{
+        const targetRecord = continuationTargetRecord();
         const addition = await runUntilGenerated(
-          onRetry => sendContinuationAudioToGemini(audioBlob, apiKey, onRetry),
+          onRetry => sendContinuationAudioToGemini(audioBlob, apiKey, onRetry, targetRecord),
           {
             setStatus:setContinuationStatus,
             shouldContinue:() => continuationState.open && continuationState.targetId === targetId && continuationState.targetOwnerUid === targetOwnerUid
@@ -7024,11 +7043,12 @@ async function finishNewVoiceDraft(audioBlob, apiKey, onRetry){
 }
 
 function appendContinuationText(addition){
-  const text = stripLeadingReviewNoteHeading(addition);
+  const text = String(addition || '').trim();
   if (!text) return;
   const record = continuationTargetRecord();
   if (!record) return;
-  appendTextToRecord(record, text, {review:true});
+  if (mergeAddOnTextIntoRecord(record, text)) return;
+  appendTextToRecord(record, stripLeadingReviewNoteHeading(text), {review:true});
 }
 
 function continuationTargetRecord(){
@@ -7047,6 +7067,183 @@ function appendDocumentText(generatedText, mode){
   if (!record) return;
   const label = mode === 'Medical certificate' ? 'Medical Certificate' : mode === 'Discharge summary' ? 'Discharge Summary' : 'Reply Letter';
   appendTextToRecord(record, `${label} (${reviewTimestampLabel()}):\n${text}`, {review:false});
+}
+
+function canonicalHeadingKey(value){
+  return String(value || '')
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function templateHeadingConfigForRecord(record){
+  if (isDischargeSummaryMode(record)){
+    return {
+      headings:DISCHARGE_TEMPLATE_HEADINGS,
+      aliases:{
+        'procedure operation notes':'PROCEDURE / OPERATION NOTES',
+        'procedure notes':'PROCEDURE / OPERATION NOTES',
+        'operation notes':'PROCEDURE / OPERATION NOTES',
+        'drug allergies':'DRUG ALLERGY',
+        'allergy':'DRUG ALLERGY',
+        'allergies':'DRUG ALLERGY',
+        'examination':'CLINICAL EXAMINATION',
+        'examination findings':'CLINICAL EXAMINATION',
+        'clinical examination findings':'CLINICAL EXAMINATION',
+        'clinical exam':'CLINICAL EXAMINATION',
+        'blood investigations':'LAB',
+        'labs':'LAB',
+        'laboratory':'LAB',
+        'investigation':'INVESTIGATIONS',
+        'procedure done':'PROCEDURE DONE',
+        'course in the hospital':'COURSE IN HOSPITAL',
+        'hospital course':'COURSE IN HOSPITAL',
+        'condition':'CONDITION AT DISCHARGE',
+        'discharge condition':'CONDITION AT DISCHARGE',
+        'advice':'ADVICE ON DISCHARGE',
+        'discharge advice':'ADVICE ON DISCHARGE',
+        'home medicines':'HOME MEDICATIONS',
+        'diet':'DIET ADVICE',
+        'follow up':'FOLLOW UP DATE',
+        'urgent care':'WHEN TO OBTAIN URGENT CARE',
+        'when to seek urgent care':'WHEN TO OBTAIN URGENT CARE'
+      }
+    };
+  }
+  return {
+    headings:VISIT_NOTE_TEMPLATE_HEADINGS,
+    aliases:{
+      'chief complaint':'Chief complaints',
+      'presenting complaint':'Chief complaints',
+      'presenting complaints':'Chief complaints',
+      'complaints':'Chief complaints',
+      'past history':'History',
+      'history of present illness':'History',
+      'past medical history':'History',
+      'previous treatments':'Previous treatment',
+      'current treatment':'Previous treatment',
+      'medications':'Previous treatment',
+      'current medications':'Previous treatment',
+      'examination findings':'Examination',
+      'clinical examination':'Examination',
+      'clinical exam':'Examination',
+      'nutrition':'Nutritional status',
+      'nutrition status':'Nutritional status',
+      'treatment plan':'Plan of care',
+      'plan':'Plan of care',
+      'advice':'Plan of care',
+      'instructions':'Plan of care',
+      'follow up':'Plan of care',
+      'diagnosis':'Provisional diagnosis',
+      'provisional diagnosis':'Provisional diagnosis',
+      'final diagnosis':'Final diagnosis'
+    }
+  };
+}
+
+function headingLookupFromConfig(config){
+  const lookup = new Map();
+  config.headings.forEach(heading => lookup.set(canonicalHeadingKey(heading), heading));
+  Object.entries(config.aliases || {}).forEach(([alias, heading]) => lookup.set(canonicalHeadingKey(alias), heading));
+  return lookup;
+}
+
+function parseTemplateSectionText(text, config){
+  const lookup = headingLookupFromConfig(config);
+  const headingPattern = /^([^:\n]{2,110})\s*:\s*(.*)$/;
+  const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
+  const sections = new Map();
+  const intro = [];
+  let current = null;
+  const append = value => {
+    if (!current) intro.push(value);
+    else sections.get(current).push(value);
+  };
+  lines.forEach(rawLine => {
+    const trimmed = rawLine.trim();
+    const match = trimmed.match(headingPattern);
+    const canonical = match ? lookup.get(canonicalHeadingKey(match[1])) : null;
+    if (canonical){
+      current = canonical;
+      if (!sections.has(current)) sections.set(current, []);
+      const inlineValue = match[2].trim();
+      if (inlineValue) sections.get(current).push(inlineValue);
+      return;
+    }
+    append(rawLine.trimEnd());
+  });
+  const compactSections = new Map();
+  sections.forEach((linesForSection, heading) => {
+    const value = linesForSection.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    if (value && !isNilLike(value)) compactSections.set(heading, value);
+  });
+  return {intro:intro.join('\n').trim(), sections:compactSections};
+}
+
+function appendSectionContent(existingContent, addition){
+  const current = String(existingContent || '').trim();
+  const next = String(addition || '').trim();
+  if (!next) return current;
+  if (!current || isNilLike(current)) return next;
+  return `${current}\n${next}`.replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function mergeTemplateSections(existingText, addOnText, config){
+  const existing = parseTemplateSectionText(existingText, config);
+  const addOn = parseTemplateSectionText(addOnText, config);
+  if (!addOn.sections.size) return null;
+  const sectionMap = new Map(existing.sections);
+  addOn.sections.forEach((value, heading) => {
+    sectionMap.set(heading, appendSectionContent(sectionMap.get(heading), value));
+  });
+  const blocks = [];
+  const intro = existing.intro.trim();
+  if (intro) blocks.push(intro);
+  config.headings.forEach(heading => {
+    const content = sectionMap.get(heading);
+    blocks.push(`${heading}:\n${content && !isNilLike(content) ? content : 'NIL'}`);
+  });
+  return blocks.join('\n\n').trim();
+}
+
+function mergeAddOnTextIntoRecord(record, addOnText){
+  const config = templateHeadingConfigForRecord(record);
+  const targetOwnerUid = noteOwnerUid(record);
+  const targetIndex = records.findIndex(item => recordMatchesOwnerAndId(item, targetOwnerUid, record.firestoreId));
+  if (targetIndex >= 0) activeIndex = targetIndex;
+  const editor = document.getElementById('generatedNoteEditor');
+  const editorMatchesTarget = editor?.dataset?.noteId === record.firestoreId && editor?.dataset?.noteOwner === targetOwnerUid;
+  const existing = editor && editorMatchesTarget ? editorPlainText(editor) : record.transcription;
+  const normalizedExisting = isDischargeSummaryMode(record) ? formatDischargeSummaryText(existing) : String(existing || '').trim();
+  const merged = mergeTemplateSections(normalizedExisting, addOnText, config);
+  if (!merged) return false;
+  record.transcription = isDischargeSummaryMode(record) ? formatDischargeSummaryText(merged) : merged;
+  record.patientData = extractPatientFromNote(record.transcription, record.patientData);
+  record.saved = false;
+  markRecordDirty(record);
+  syncRecordCollections(record);
+  persistRecord(record,{
+    transcription:record.transcription,
+    patientData:record.patientData,
+    saved:false,
+    updatedAt:serverTimestamp()
+  }).catch(error => {
+    console.error('Merged add-on save failed:', error);
+    showToast('Add-on merged locally, but saving is pending.');
+  });
+  clearTimeout(saveFeedbackTimer);
+  saveFeedbackUntil = 0;
+  saveDraftBtn.querySelector('span').textContent = 'Save';
+  if (selectedVisitType === 'OP' && selectedOpTimelineKey && targetIndex < 0){
+    selectedOpTimelineEntryId = record.firestoreId;
+    renderOpPatientTimeline(selectedOpTimelineKey, record.firestoreId);
+  }else{
+    renderGeneratedNote(record);
+  }
+  focusEditorEnd(document.getElementById('generatedNoteEditor'));
+  return true;
 }
 
 function appendTextToRecord(record, text, {review = false} = {}){
@@ -7241,22 +7438,25 @@ function continuationResponseSchema(){
   return {type:'object',properties:{text:{type:'string',description:'The additional dictated note text only.'}},required:['text']};
 }
 
-async function sendContinuationAudioToGemini(audioBlob, apiKey, onRetry){
+async function sendContinuationAudioToGemini(audioBlob, apiKey, onRetry, targetRecord = null){
   if (audioBlob.size > 19 * 1024 * 1024) throw new Error('Recording is too large for inline upload.');
   const audioData = await blobToBase64(audioBlob);
+  const config = templateHeadingConfigForRecord(targetRecord || {});
+  const headingList = config.headings.join('; ');
+  const noteType = isDischargeSummaryMode(targetRecord) ? 'discharge summary' : 'visit note';
   const payload = await generateContentWithRetry({
     apiKey,
     audioBlob,
     audioData,
-    systemPrompt:`${GEMINI_FIDELITY_RULE}\n\nYou are an ambient clinical add-on note assistant. The recording may be a doctor-patient-attendant conversation, a formal dictation, or a mixture of both. Listen to and process the whole recording, not only phrases that sound dictated. Convert only clearly audible clinically relevant content into complete professional clinical English to append to an existing note. Correct spelling and grammar only. Do not add, remove, infer, summarize, shorten, condense, compress, or change clinical information. Preserve every clearly stated symptom, chronology, investigation, numeric value, unit, date, examination finding, advice, medicine, dose, route, frequency, duration, and follow-up exactly in meaning. Output only these sections when content is present: "Review Note:", "Review of Investigations:", "Examination Findings:", and "Treatment Plan:". Do not output any unsupported section. Do not output NIL, none, placeholders, patient identifiers, demographics, prescription, current medications, diagnosis, advice, instructions, follow-up, or any other heading. Put symptom updates, clinical course, response to treatment, and general review content under "Review Note:". Put investigation reports and values under "Review of Investigations:". Put examination findings and vitals under "Examination Findings:". Put medicines advised, investigation orders, referrals, procedures planned, follow-up plans, and treatment changes under "Treatment Plan:". Return only the requested JSON object.`,
-    taskPrompt:`${GEMINI_FIDELITY_RULE}\n\nCreate append-only add-on text from the complete recording. Use only these section headings when supported by dictated content: Review Note, Review of Investigations, Examination Findings, Treatment Plan. Omit any section with no dictated content. Never create Prescription, Current Medications, Diagnosis, Advice, Instructions, Follow-up, Patient Name, Age, UHID, or Sex sections. Do not add a section just to write NIL. Preserve dictated facts, medicines, doses, investigations, values, examination findings, treatment changes, and plans exactly in meaning. Number Review of Investigations and Treatment Plan items when there are multiple separate items. Put general review narrative only under Review Note.`,
+    systemPrompt:`${GEMINI_FIDELITY_RULE}\n\nYou are an ambient clinical add-on note assistant for an existing ${noteType}. Listen to and process the whole recording. Convert only clearly audible dictated add-on content into complete professional clinical English for insertion into the matching existing template sections. Correct spelling and grammar only when meaning is unchanged. Use only these exact section headings when content is clearly dictated for them: ${headingList}. Omit unsupported sections entirely. Do not output NIL, none, placeholders, patient identifiers, demographics, Review Note, Prescription, Rx, or any heading outside this list. Preserve every clearly stated symptom, chronology, investigation, numeric value, unit, date, examination finding, advice, medicine, dose, route, frequency, duration, diagnosis, and plan exactly in meaning. Return only the requested JSON object.`,
+    taskPrompt:`${GEMINI_FIDELITY_RULE}\n\nCreate append-only add-on text from the complete recording for this ${noteType}. Use only these exact headings when supported by dictated content: ${headingList}. If the doctor dictates a template heading or an equivalent phrase, place that content under the matching heading. Omit any section with no dictated content. Do not add sections just to write NIL. Do not repeat patient credentials. Do not replace existing note content; this output will be added below existing content in the matching sections. Preserve dictated facts, medicines, doses, investigations, values, examination findings, diagnoses, treatment changes, and plans exactly in meaning.`,
     responseSchema:continuationResponseSchema(),
     onRetry
   });
   const responseText = payload.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('').trim();
   if (!responseText) throw noteServiceError('The service returned an empty response.', true);
   try{
-    return stripLeadingReviewNoteHeading(formatAddOnContinuationText(String(JSON.parse(responseText).text || '').trim()));
+    return formatAddOnContinuationText(String(JSON.parse(responseText).text || '').trim(), config);
   }catch(error){
     throw noteServiceError('The service returned an invalid structured response.', true);
   }
@@ -7287,39 +7487,40 @@ function formatContinuationText(text){
   return sectionMatched ? formatted : formatReviewNoteBody(formatted);
 }
 
-function formatAddOnContinuationText(text){
-  const sectionBoundary = '(?:Review Note(?:\\s*\\([^)]*\\))?|Review of Investigations|Examination Findings|Examination|Exam Findings|Clinical Examination|Treatment Plan|Current Medications|Medications|Prescription|Rx|R\\/x|Advice|Instructions?|Follow[- ]?up|Diagnosis|Patient Name|Age|UHID|Sex)';
+function formatAddOnContinuationText(text, config = templateHeadingConfigForRecord({})){
+  const lookup = headingLookupFromConfig(config);
+  const headingAlternates = Array.from(new Set([
+    ...config.headings,
+    ...Object.keys(config.aliases || {}),
+    'Review Note','Review of Investigations','Examination Findings','Examination','Exam Findings','Clinical Examination',
+    'Treatment Plan','Current Medications','Medications','Prescription','Rx','R/x','Advice','Instructions','Follow-up',
+    'Diagnosis','Patient Name','Age','UHID','Sex'
+  ]));
+  const sectionBoundary = `(?:${headingAlternates.map(escapeRegExp).join('|')})`;
   const numberedHeadingPrefix = '\\s*(?:\\d+[.)]\\s*)?';
   const normalized = String(text || '')
-    .replace(new RegExp(`${numberedHeadingPrefix}(Review Note(?:\\s*\\([^)]*\\))?:\\s*)`, 'gi'), '\n\nReview Note:\n')
-    .replace(new RegExp(`${numberedHeadingPrefix}(Review of Investigations:\\s*)`, 'gi'), '\n\nReview of Investigations:\n')
-    .replace(new RegExp(`${numberedHeadingPrefix}(?:(?:Clinical\\s+)?Examination|Exam(?:ination)? Findings):\\s*`, 'gi'), '\n\nExamination Findings:\n')
-    .replace(new RegExp(`${numberedHeadingPrefix}(Treatment Plan:\\s*)`, 'gi'), '\n\nTreatment Plan:\n')
-    .replace(new RegExp(`${numberedHeadingPrefix}((?:Current\\s+)?Medications?|Prescription|Rx|R\\/x|Advice|Instructions?|Follow[- ]?up|Diagnosis|Patient Name|Age|UHID|Sex):\\s*`, 'gi'), '\n\n$1:\n')
+    .replace(new RegExp(`${numberedHeadingPrefix}(${sectionBoundary})\\s*:\\s*`, 'gi'), (match, label) => {
+      const canonical = lookup.get(canonicalHeadingKey(label));
+      return canonical ? `\n\n${canonical}:\n` : '\n\n';
+    })
     .replace(/([.!?])\s+([A-Z][A-Za-z /-]{2,80}:)/g, '$1\n\n$2')
     .replace(/\s+(\d+[.)]\s+)/g, '\n$1')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-  const allowedLabels = new Set(['Review Note','Review of Investigations','Examination Findings','Treatment Plan']);
   const pieces = [];
   let firstSectionIndex = -1;
   const formatted = normalized.replace(
     new RegExp(`(${sectionBoundary}):[ \\t]*\\n([\\s\\S]*?)(?=\\n+${sectionBoundary}:|$)`, 'gi'),
     (match, label, value, offset) => {
       if (firstSectionIndex < 0) firstSectionIndex = offset;
-      const rawLabel = label.trim();
-      const normalizedLabel = /^(?:(?:Clinical\s+)?Examination|Exam(?:ination)? Findings)$/i.test(rawLabel)
-        ? 'Examination Findings'
-        : rawLabel.replace(/\s*\([^)]*\)\s*/g, '').trim();
-      if (!allowedLabels.has(normalizedLabel)) return '';
+      const normalizedLabel = lookup.get(canonicalHeadingKey(label));
+      if (!normalizedLabel) return '';
       const formattedValue = formatSectionValue(normalizedLabel, value);
       if (!formattedValue || isNilLike(formattedValue)) return '';
       pieces.push(`${normalizedLabel}:\n${formattedValue}`);
       return '';
     }
   ).trim();
-  const intro = firstSectionIndex > 0 ? normalized.slice(0, firstSectionIndex).trim() : (pieces.length ? '' : formatted);
-  if (intro && !isNilLike(intro)) pieces.unshift(`Review Note:\n${formatReviewNoteBody(intro)}`);
   return pieces.join('\n\n').trim();
 }
 
