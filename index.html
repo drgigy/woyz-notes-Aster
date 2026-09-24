@@ -369,7 +369,7 @@ function compactNoteText(text){
     .join('\n\n');
 }
 
-const NOTE_SECTION_LOOKAHEAD = '(?:Patient Name|Age|UHID|Sex|Presenting Complaint|History of Present Illness|Past Medical or Surgical History|Allergies|Family History|Personal History|Examination Findings|Review of Investigations|Current Medications|Diagnosis|Treatment Plan|Advice|Instructions?|Follow[- ]?up|Prescription|Review Note(?:\\s*\\([^)]*\\))?)';
+const NOTE_SECTION_LOOKAHEAD = '(?:Patient Name|Age|UHID|Sex|Chief complaints|Allergies|History|Previous treatment|Examination|Nutritional status|Plan of care|Provisional diagnosis|Final diagnosis|Presenting Complaint|History of Present Illness|Past Medical or Surgical History|Family History|Personal History|Examination Findings|Review of Investigations|Current Medications|Diagnosis|Treatment Plan|Advice|Instructions?|Follow[- ]?up|Prescription|Review Note(?:\\s*\\([^)]*\\))?)';
 const DISCHARGE_SUMMARY_HEADINGS = [
   'Name','Age/Gender','UHID','IP No.','IP No','Address','Consultant','DOA','DOD',
   'DIAGNOSIS','PROCEDURE DONE','DRUG ALLERGY','HISTORY','CLINICAL EXAMINATION',
