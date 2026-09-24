@@ -7055,7 +7055,10 @@ async function finishNewVoiceDraft(audioBlob, apiKey, onRetry){
 
 function appendContinuationText(addition){
   const text = String(addition || '').trim();
-  if (!text) return;
+  if (!text){
+    showToast('No add-on content was detected.');
+    return;
+  }
   const record = continuationTargetRecord();
   if (!record) return;
   if (mergeAddOnTextIntoRecord(record, text)) return;
@@ -7423,6 +7426,10 @@ function mergeAddOnTextIntoRecord(record, addOnText){
   return true;
 }
 
+function defaultAddOnHeadingForRecord(record){
+  return isDischargeSummaryMode(record) ? 'COURSE IN HOSPITAL' : 'History';
+}
+
 function appendTextToRecord(record, text, {review = false} = {}){
   const targetOwnerUid = noteOwnerUid(record);
   const targetIndex = records.findIndex(item => recordMatchesOwnerAndId(item, targetOwnerUid, record.firestoreId));
@@ -7621,19 +7628,20 @@ async function sendContinuationAudioToGemini(audioBlob, apiKey, onRetry, targetR
   const config = templateHeadingConfigForRecord(targetRecord || {});
   const headingList = config.headings.join('; ');
   const noteType = isDischargeSummaryMode(targetRecord) ? 'discharge summary' : 'visit note';
+  const fallbackHeading = defaultAddOnHeadingForRecord(targetRecord);
   const payload = await generateContentWithRetry({
     apiKey,
     audioBlob,
     audioData,
-    systemPrompt:`${GEMINI_FIDELITY_RULE}\n\nYou are an ambient clinical add-on note assistant for an existing ${noteType}. Listen to and process the whole recording. Convert only clearly audible dictated add-on content into complete professional clinical English for insertion into the matching existing template sections. Correct spelling and grammar only when meaning is unchanged. Use only these exact section headings when content is clearly dictated for them: ${headingList}. Omit unsupported sections entirely. Do not output NIL, none, placeholders, patient identifiers, demographics, Review Note, Prescription, Rx, or any heading outside this list. Preserve every clearly stated symptom, chronology, investigation, numeric value, unit, date, examination finding, advice, medicine, dose, route, frequency, duration, diagnosis, and plan exactly in meaning. Return only the requested JSON object.`,
-    taskPrompt:`${GEMINI_FIDELITY_RULE}\n\nCreate append-only add-on text from the complete recording for this ${noteType}. Use only these exact headings when supported by dictated content: ${headingList}. If the doctor dictates a template heading or an equivalent phrase, place that content under the matching heading. Omit any section with no dictated content. Do not add sections just to write NIL. Do not repeat patient credentials. Do not replace existing note content; this output will be added below existing content in the matching sections. Preserve dictated facts, medicines, doses, investigations, values, examination findings, diagnoses, treatment changes, and plans exactly in meaning.`,
+    systemPrompt:`${GEMINI_FIDELITY_RULE}\n\nYou are an ambient clinical add-on note assistant for an existing ${noteType}. Listen to and process the whole recording. Convert only clearly audible dictated add-on content into complete professional clinical English for insertion into the matching existing template sections. Correct spelling and grammar only when meaning is unchanged. Use only these exact section headings when content is clearly dictated for them: ${headingList}. If clinically relevant content is dictated but no template heading is clearly stated, place that content under "${fallbackHeading}" so no dictated content is lost. Omit unsupported sections entirely. Do not output NIL, none, placeholders, patient identifiers, demographics, Review Note, Prescription, Rx, or any heading outside this list. Preserve every clearly stated symptom, chronology, investigation, numeric value, unit, date, examination finding, advice, medicine, dose, route, frequency, duration, diagnosis, and plan exactly in meaning. Return only the requested JSON object.`,
+    taskPrompt:`${GEMINI_FIDELITY_RULE}\n\nCreate append-only add-on text from the complete recording for this ${noteType}. Use only these exact headings when supported by dictated content: ${headingList}. If the doctor dictates a template heading or an equivalent phrase, place that content under the matching heading. If content has no clear heading, place it under "${fallbackHeading}". Omit any section with no dictated content. Do not add sections just to write NIL. Do not repeat patient credentials. Do not replace existing note content; this output will be added below existing content in the matching sections. Preserve dictated facts, medicines, doses, investigations, values, examination findings, diagnoses, treatment changes, and plans exactly in meaning.`,
     responseSchema:continuationResponseSchema(),
     onRetry
   });
   const responseText = payload.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('').trim();
   if (!responseText) throw noteServiceError('The service returned an empty response.', true);
   try{
-    return formatAddOnContinuationText(String(JSON.parse(responseText).text || '').trim(), config);
+    return formatAddOnContinuationText(String(JSON.parse(responseText).text || '').trim(), config, targetRecord);
   }catch(error){
     throw noteServiceError('The service returned an invalid structured response.', true);
   }
@@ -7664,7 +7672,7 @@ function formatContinuationText(text){
   return sectionMatched ? formatted : formatReviewNoteBody(formatted);
 }
 
-function formatAddOnContinuationText(text, config = templateHeadingConfigForRecord({})){
+function formatAddOnContinuationText(text, config = templateHeadingConfigForRecord({}), targetRecord = null){
   const lookup = headingLookupFromConfig(config);
   const headingAlternates = Array.from(new Set([
     ...config.headings,
@@ -7698,7 +7706,11 @@ function formatAddOnContinuationText(text, config = templateHeadingConfigForReco
       return '';
     }
   ).trim();
-  return pieces.join('\n\n').trim();
+  if (pieces.length) return pieces.join('\n\n').trim();
+  const fallbackValue = formatSectionValue(defaultAddOnHeadingForRecord(targetRecord), formatted || normalized);
+  return fallbackValue && !isNilLike(fallbackValue)
+    ? `${defaultAddOnHeadingForRecord(targetRecord)}:\n${fallbackValue}`
+    : '';
 }
 
 function formatStoredReviewNotes(text){
