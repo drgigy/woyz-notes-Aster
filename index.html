@@ -385,6 +385,14 @@ const DISCHARGE_INLINE_LABELS = [
   'Musculoskeletal System','Right upper limb','Right lower limb','Local examination'
 ];
 const DISCHARGE_DEMOGRAPHIC_LABELS = ['Name','Age/Gender','UHID','IP No.','Address','Consultant','DOA','DOD'];
+const DISCHARGE_COPY_HEADINGS = [
+  'DIAGNOSIS','PROCEDURE DONE','DRUG ALLERGY','HISTORY','CLINICAL EXAMINATION',
+  'INVESTIGATIONS','LAB','RADIOLOGY','PROCEDURE / OPERATION NOTES','OTHERS',
+  'GENERAL INSTRUCTIONS','REASON FOR ADMISSION','COURSE IN HOSPITAL',
+  'MEDICATIONS ADMINISTERED','CONDITION AT DISCHARGE','ADVICE ON DISCHARGE',
+  'MEDICATIONS','HOME MEDICATIONS','DIET ADVICE','FOLLOW UP DATE','REVIEW',
+  'WHEN TO OBTAIN URGENT CARE'
+];
 
 function escapeRegExp(value){
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -668,6 +676,91 @@ function removeNilSectionsForCopy(text){
     .filter(Boolean)
     .join('\n\n')
     .trim();
+}
+
+function canonicalDischargeCopyHeading(label){
+  const normalized = String(label || '').trim().toUpperCase().replace(/\s+/g, ' ');
+  if (normalized === 'PROCEDURE/OPERATION NOTES') return 'PROCEDURE / OPERATION NOTES';
+  if (normalized === 'IP NO') return 'IP No.';
+  return normalized;
+}
+
+function isDischargeDemographicLine(line){
+  return /^(Name|Age\/Gender|UHID|IP No\.?|Address|Consultant|DOA|DOD)\s*:/i.test(String(line || '').trim());
+}
+
+function dischargeCopySections(text){
+  const sectionMap = new Map(DISCHARGE_COPY_HEADINGS.map(heading => [heading, []]));
+  const headingPattern = new RegExp(`^(${DISCHARGE_COPY_HEADINGS.map(escapeRegExp).join('|')}|PROCEDURE/OPERATION NOTES)\\s*:\\s*(.*)$`, 'i');
+  const optionalHeadingPattern = /^([A-Z][A-Z\s/&()-]{2,}CONSULTATION)\s*:\s*(.*)$/i;
+  const optionalHeadings = [];
+  const lines = formatDischargeSummaryText(text).replace(/\r\n/g, '\n').split('\n');
+  let currentHeading = null;
+  lines.forEach(rawLine => {
+    const line = rawLine.trim();
+    if (!line) {
+      if (currentHeading) sectionMap.get(currentHeading).push('');
+      return;
+    }
+    if (isDischargeDemographicLine(line)) return;
+    const headingMatch = line.match(headingPattern);
+    if (headingMatch){
+      currentHeading = canonicalDischargeCopyHeading(headingMatch[1]);
+      const inlineValue = headingMatch[2].trim();
+      if (inlineValue) sectionMap.get(currentHeading).push(inlineValue);
+      return;
+    }
+    const optionalHeadingMatch = line.match(optionalHeadingPattern);
+    if (optionalHeadingMatch){
+      currentHeading = optionalHeadingMatch[1].trim().toUpperCase().replace(/\s+/g, ' ');
+      if (!sectionMap.has(currentHeading)){
+        sectionMap.set(currentHeading, []);
+        optionalHeadings.push(currentHeading);
+      }
+      const inlineValue = optionalHeadingMatch[2].trim();
+      if (inlineValue) sectionMap.get(currentHeading).push(inlineValue);
+      return;
+    }
+    if (currentHeading) sectionMap.get(currentHeading).push(rawLine.trimEnd());
+  });
+  const courseIndex = DISCHARGE_COPY_HEADINGS.indexOf('COURSE IN HOSPITAL');
+  const orderedHeadings = [
+    ...DISCHARGE_COPY_HEADINGS.slice(0, courseIndex + 1),
+    ...optionalHeadings,
+    ...DISCHARGE_COPY_HEADINGS.slice(courseIndex + 1)
+  ];
+  return orderedHeadings.map(heading => {
+    const content = (sectionMap.get(heading) || []).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    return {heading, content: content || 'Nil'};
+  });
+}
+
+function dischargeCopyPlainText(text){
+  return dischargeCopySections(text)
+    .map(({heading, content}) => content.includes('\n') ? `${heading} :\n${content}` : `${heading} :${content}`)
+    .join('\n\n')
+    .trim();
+}
+
+function dischargeCopyHtml(text){
+  const sections = dischargeCopySections(text)
+    .map(({heading, content}) => {
+      const contentHtml = escapeHtml(content).replace(/\n/g, '<br>');
+      const separator = content.includes('\n') ? ':<br>' : ':';
+      return `<p style="margin:0 0 14px 0;"><strong>${escapeHtml(heading)}</strong> ${separator}${contentHtml}</p>`;
+    })
+    .join('');
+  return `<div style="font-family:Candara, Arial, sans-serif;font-size:14px;line-height:1.35;color:#000;">${sections}</div>`;
+}
+
+function adminClipboardPayloadForNote(note, text){
+  if (isDischargeSummaryNote(note)){
+    return {
+      text: dischargeCopyPlainText(text),
+      html: dischargeCopyHtml(text)
+    };
+  }
+  return {text: removeNilSectionsForCopy(text), html: ''};
 }
 
 function notePatientName(note){
@@ -1249,17 +1342,37 @@ function noteForAdminAllEntryEditor(editor){
   return allNotes.find(note => note.id === id && note.userId === userId) || null;
 }
 
-function selectedAdminCopyText(){
+function selectedAdminCopyPayload(){
   const allEditors = adminAllEntryEditors();
   if (selectedTimelineEntryId === 'all' && allEditors.length){
-    return allEditors
-      .map(editor => removeNilSectionsForCopy(editorPlainText(editor)))
-      .filter(Boolean)
-      .join('\n\n');
+    const payloads = allEditors
+      .map(editor => adminClipboardPayloadForNote(noteForAdminAllEntryEditor(editor), editorPlainText(editor)))
+      .filter(payload => payload.text);
+    return {
+      text: payloads.map(payload => payload.text).join('\n\n'),
+      html: payloads.some(payload => payload.html)
+        ? payloads.map(payload => payload.html || `<div>${escapeHtml(payload.text).replace(/\n/g, '<br>')}</div>`).join('<br><br>')
+        : ''
+    };
   }
   const note = selectedTimelineNote();
   const editor = document.getElementById('adminNoteEditor');
-  return removeNilSectionsForCopy(editorPlainText(editor) || note?.data?.transcription || '');
+  return adminClipboardPayloadForNote(note, editorPlainText(editor) || note?.data?.transcription || '');
+}
+
+async function writeAdminClipboardPayload(payload){
+  if (!payload?.text) return;
+  if (payload.html && navigator.clipboard?.write && window.ClipboardItem){
+    try{
+      const item = new ClipboardItem({
+        'text/html': new Blob([payload.html], {type:'text/html'}),
+        'text/plain': new Blob([payload.text], {type:'text/plain'})
+      });
+      await navigator.clipboard.write([item]);
+      return;
+    }catch(error){}
+  }
+  await navigator.clipboard.writeText(payload.text);
 }
 
 function render(){
@@ -1471,9 +1584,9 @@ updateVisitToggle();
 
 copyBtn.addEventListener('click', async () => {
   const note = selectedTimelineEntryId === 'all' ? selectedAdminNote() : selectedTimelineNote();
-  const text = selectedAdminCopyText();
-  if (!text) return;
-  try{ await navigator.clipboard.writeText(text); }catch(error){}
+  const payload = selectedAdminCopyPayload();
+  if (!payload.text) return;
+  try{ await writeAdminClipboardPayload(payload); }catch(error){}
   try{
     if (note) await updateDoc(doc(db,note.path),{
       adminCopiedAt:serverTimestamp(),
