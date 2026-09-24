@@ -805,7 +805,7 @@ function dischargeCopySections(text){
 
 function dischargeCopyPlainText(text){
   return dischargeCopySections(text)
-    .map(({heading, content}) => content.includes('\n') ? `${heading} :\n${content}` : `${heading} :${content}`)
+    .map(({heading, content}) => `${heading} :\n${content}`)
     .join('\n\n')
     .trim();
 }
@@ -814,8 +814,7 @@ function dischargeCopyHtml(text){
   const sections = dischargeCopySections(text)
     .map(({heading, content}) => {
       const contentHtml = escapeHtml(content).replace(/\n/g, '<br>');
-      const separator = content.includes('\n') ? ':<br>' : ':';
-      return `<p style="margin:0 0 14px 0;"><strong>${escapeHtml(heading)}</strong> ${separator}${contentHtml}</p>`;
+      return `<p style="margin:0 0 14px 0;"><strong>${escapeHtml(heading)}</strong> :<br>${contentHtml}</p>`;
     })
     .join('');
   return `<div style="font-family:Candara, Arial, sans-serif;font-size:14px;line-height:1.35;color:#000;">${sections}</div>`;
