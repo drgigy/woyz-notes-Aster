@@ -1113,6 +1113,15 @@
     background:#B93B28;
     border-color:#B93B28;
   }
+  .topbar-generate-discharge-btn{
+    flex-basis:178px;
+    background:#2F2F32;
+    border-color:#2F2F32;
+  }
+  .topbar-generate-discharge-btn:hover{
+    background:#1F1F22;
+    border-color:#1F1F22;
+  }
   .template-wrap,
   .timeline-menu-wrap{
     position:relative;
@@ -2422,6 +2431,7 @@
       </div>
       <div class="topbar-doc-actions" id="topbarDocActions" aria-label="Voice note actions">
         <button class="topbar-mode-btn topbar-review-btn" id="topbarContinueBtn" aria-label="Add on dictation for selected note" title="Add on dictation">Add On</button>
+        <button class="topbar-mode-btn topbar-generate-discharge-btn" id="topbarGenerateDischargeBtn" aria-label="Generate discharge summary from selected visit note" title="Generate discharge summary">Generate Discharge Summary</button>
         <div class="template-wrap">
           <button class="topbar-mode-btn template-btn" id="templateBtn" type="button" aria-haspopup="true" aria-expanded="false">Template</button>
           <div class="template-menu" id="templateMenu">
@@ -2884,6 +2894,7 @@ const mobileTemplateSheet = document.getElementById('mobileTemplateSheet');
 const continueNoteBtn = document.getElementById('continueNoteBtn');
 const topbarDocActions = document.getElementById('topbarDocActions');
 const topbarContinueBtn = document.getElementById('topbarContinueBtn');
+const topbarGenerateDischargeBtn = document.getElementById('topbarGenerateDischargeBtn');
 const templateWrap = document.querySelector('.template-wrap');
 const templateBtn = document.getElementById('templateBtn');
 const templateMenu = document.getElementById('templateMenu');
@@ -4852,11 +4863,16 @@ function showHomeScreen(){
 function updateContinueNoteButton(){
   const canContinue = selectedRecordCanContinue();
   const record = records[activeIndex];
+  const dischargeSourceRecord = currentEditableRecord() || opTimelineWorkingRecord();
+  const canGenerateDischarge = canGenerateDischargeSummaryForRecord(dischargeSourceRecord);
   const showVoiceModes = Boolean(record?.voiceDraft);
   continueNoteBtn.classList.toggle('visible', canContinue);
   topbarContinueBtn.style.display = canContinue ? '' : 'none';
   topbarContinueBtn.disabled = !canContinue || continuationState.hasStarted || continuationState.processing;
   topbarContinueBtn.classList.toggle('inactive', !canContinue);
+  topbarGenerateDischargeBtn.style.display = canGenerateDischarge ? '' : 'none';
+  topbarGenerateDischargeBtn.disabled = !canGenerateDischarge || continuationState.hasStarted || continuationState.processing;
+  topbarGenerateDischargeBtn.classList.toggle('inactive', !canGenerateDischarge);
   topbarDocActions.classList.toggle('visible', Boolean(currentUser));
   topbarDocActions.querySelectorAll('[data-topbar-voice-mode]').forEach(button => {
     button.classList.toggle('active', showVoiceModes && record?.selectedMode === button.dataset.topbarVoiceMode);
@@ -5298,20 +5314,76 @@ function isDischargeSectionHeadingLine(line){
   return new RegExp(`^(?:${DISCHARGE_SUMMARY_HEADINGS.map(escapeRegExp).join('|')})\\s*:`, 'i').test(String(line || '').trim());
 }
 
+const LAB_VALUE_LABELS = [
+  'Total bilirubin','Direct bilirubin','Indirect bilirubin','Total cholesterol',
+  'Platelet count','Total count','Hemoglobin','Triglycerides','Homocysteine',
+  'Creatinine','Potassium','Chloride','Platelets','Bilirubin','Sodium',
+  'HbA1c','SGOT','SGPT','ALT','AST','Urea','RBS','FBS','PPBS','ESR','CRP','HDL','LDL','Hb','TC'
+];
+
+function canonicalLabLabel(label){
+  const key = canonicalHeadingKey(label);
+  const aliases = {
+    hb:'Hemoglobin',
+    tc:'Total count',
+    platelets:'Platelet count'
+  };
+  return aliases[key] || LAB_VALUE_LABELS.find(item => canonicalHeadingKey(item) === key) || String(label || '').trim();
+}
+
+function formatDischargeLabContent(text){
+  const source = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map(line => line.trim().replace(/\b(\d+)\.\s+(\d+)\b/g, '$1.$2').replace(/^[-•]\s*/, '').replace(/^\d+[.)]\s+/, ''))
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\b(\d+)\.\s+(\d+)\b/g, '$1.$2')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!source || isNilLike(source)) return 'NIL';
+  const labelPattern = [...LAB_VALUE_LABELS]
+    .sort((a, b) => b.length - a.length)
+    .map(escapeRegExp)
+    .join('|');
+  const extracted = [];
+  const labRegex = new RegExp(`\\b(${labelPattern})\\b\\s*[:=-]?\\s*([<>]?\\d+(?:\\.\\d+)?(?:\\s*(?:lakh|lakhs))?)`, 'gi');
+  let match;
+  while ((match = labRegex.exec(source))){
+    const label = canonicalLabLabel(match[1]);
+    const value = match[2].replace(/\blakhs\b/gi, 'lakh').trim();
+    extracted.push(addStandardBloodUnit(`${label}: ${value}`));
+  }
+  if (!extracted.length) return source;
+  const firstLabIndex = source.search(labRegex);
+  const header = firstLabIndex > 0 ? source.slice(0, firstLabIndex).trim().replace(/[,\s]+$/, '') : '';
+  return [header, ...extracted].filter(Boolean).join('\n');
+}
+
 function normalizeDischargeLabValues(text){
   const labLabelPattern = /^(Hemoglobin|Hb|ESR|CRP|Total count|TC|Platelet count|Platelets?|Creatinine|Urea|RBS|FBS|PPBS|HbA1c|Sodium|Potassium|Chloride|SGOT|SGPT|ALT|AST|Bilirubin|Total bilirubin|Direct bilirubin|Indirect bilirubin|Total cholesterol|Triglycerides|HDL|LDL|Homocysteine)\s*:\s*(.*)$/i;
   const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
   const result = [];
   let inLab = false;
+  let labBuffer = [];
+  const flushLabBuffer = () => {
+    if (!labBuffer.length) return;
+    result.push(formatDischargeLabContent(labBuffer.join('\n')));
+    labBuffer = [];
+  };
   for (let index = 0; index < lines.length; index += 1){
     const line = lines[index];
     const trimmed = line.trim();
     if (/^LAB\s*:/i.test(trimmed)){
+      flushLabBuffer();
       inLab = true;
-      result.push(line);
+      result.push(line.replace(/^(\s*LAB\s*:).*$/i, '$1'));
+      const inlineValue = trimmed.replace(/^LAB\s*:\s*/i, '').trim();
+      if (inlineValue) labBuffer.push(inlineValue);
       continue;
     }
     if (inLab && trimmed && isDischargeSectionHeadingLine(trimmed) && !/^LAB\s*:/i.test(trimmed)){
+      flushLabBuffer();
       inLab = false;
     }
     if (inLab){
@@ -5325,12 +5397,15 @@ function normalizeDischargeLabValues(text){
         }
       }
       if (match && match[2].trim()){
-        result.push(addStandardBloodUnit(trimmed));
-        continue;
+        labBuffer.push(addStandardBloodUnit(trimmed));
+      }else{
+        labBuffer.push(line);
       }
+      continue;
     }
     result.push(line);
   }
+  flushLabBuffer();
   return result.join('\n');
 }
 
@@ -8794,6 +8869,7 @@ document.addEventListener('click', event => {
 mobileSaveBtn.addEventListener('click', () => saveDraftBtn.click());
 continueNoteBtn.addEventListener('click', openContinuationDock);
 topbarContinueBtn.addEventListener('click', openContinuationDock);
+topbarGenerateDischargeBtn.addEventListener('click', generateDischargeSummaryFromCurrentVisitNote);
 function handleDocumentModeAction(mode){
   if (continuationState.hasStarted || continuationState.processing) return;
   const normalizedMode = mode || null;
