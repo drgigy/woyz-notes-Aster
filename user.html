@@ -621,6 +621,12 @@
     box-shadow:0 12px 28px -15px rgba(31,95,82,.8);
   }
   .mobile-review-inline.visible{ display:inline-flex; }
+  .mobile-discharge-summary-inline{
+    flex-basis:100%;
+    width:auto;
+    background:#2F2F32;
+    box-shadow:0 12px 28px -15px rgba(47,47,50,.8);
+  }
 
   .processing-wrap{ width:100%; min-height:100%; display:flex; align-items:center; justify-content:center; padding:44px; }
   .processing-content{ width:min(620px,92%); text-align:center; }
@@ -3805,6 +3811,7 @@ function renderOpPatientTimeline(key, entryId = selectedOpTimelineEntryId || 'al
         ${renderedNotes}
         <div class="generated-note-actions">
           <button class="mobile-review-inline ${selectedRecordCanContinue() ? 'visible' : ''}" id="mobileInlineReviewBtn" aria-label="Add on dictation for selected note">Add On</button>
+          <button class="mobile-review-inline mobile-discharge-summary-inline ${canGenerateDischargeSummaryForRecord(opTimelineWorkingRecord()) ? 'visible' : ''}" id="mobileGenerateDischargeBtn" aria-label="Generate discharge summary from selected visit note">Generate Discharge Summary</button>
         </div>
       </section>
     </div>`;
@@ -3828,6 +3835,7 @@ function renderOpPatientTimeline(key, entryId = selectedOpTimelineEntryId || 'al
     });
   });
   document.getElementById('mobileInlineReviewBtn')?.addEventListener('click', openContinuationDock);
+  document.getElementById('mobileGenerateDischargeBtn')?.addEventListener('click', generateDischargeSummaryFromCurrentVisitNote);
 }
 
 function openOpTimelineForRecord(record, entryId = null){
@@ -6309,13 +6317,16 @@ function renderGeneratedNote(draft){
         <div class="note-editor ${anonymizeEnabled ? 'anonymized' : ''}" id="generatedNoteEditor" data-note-id="${escapeHtml(draft.firestoreId || '')}" data-note-owner="${escapeHtml(noteOwnerUid(draft) || '')}" contenteditable="${canEdit ? 'true' : 'false'}" spellcheck="true" role="textbox" aria-multiline="true" aria-label="Editable generated note">${richNoteHtml(displayText)}</div>
         <div class="generated-note-actions">
           <button class="mobile-review-inline ${selectedRecordCanContinue() ? 'visible' : ''}" id="mobileInlineReviewBtn" aria-label="Add on dictation for selected note">Add On</button>
+          <button class="mobile-review-inline mobile-discharge-summary-inline ${canGenerateDischargeSummaryForRecord(draft) ? 'visible' : ''}" id="mobileGenerateDischargeBtn" aria-label="Generate discharge summary from this visit note">Generate Discharge Summary</button>
         </div>
       </section>
     </div>`;
   const editor = document.getElementById('generatedNoteEditor');
   const mobileInlineReviewBtn = document.getElementById('mobileInlineReviewBtn');
+  const mobileGenerateDischargeBtn = document.getElementById('mobileGenerateDischargeBtn');
   resizeNoteEditor(editor);
   if (mobileInlineReviewBtn) mobileInlineReviewBtn.addEventListener('click', openContinuationDock);
+  if (mobileGenerateDischargeBtn) mobileGenerateDischargeBtn.addEventListener('click', generateDischargeSummaryFromCurrentVisitNote);
   if (canEdit){
     ['focus','keyup','mouseup','touchend'].forEach(eventName => {
       editor.addEventListener(eventName, captureEditorSelection);
@@ -7067,6 +7078,172 @@ function appendDocumentText(generatedText, mode){
   if (!record) return;
   const label = mode === 'Medical certificate' ? 'Medical Certificate' : mode === 'Discharge summary' ? 'Discharge Summary' : 'Reply Letter';
   appendTextToRecord(record, `${label} (${reviewTimestampLabel()}):\n${text}`, {review:false});
+}
+
+function isVisitNoteRecord(record){
+  return normalizedEntryMode(record).toLowerCase() === 'visit note' && !isDischargeSummaryMode(record);
+}
+
+function canGenerateDischargeSummaryForRecord(record){
+  return Boolean(record && isVisitNoteRecord(record) && !record.voiceDraft && !record.isDraft && (record.transcription || record.kind === 'generated'));
+}
+
+function nonNilSection(value){
+  const text = String(value || '').trim();
+  return text && !isNilLike(text) ? text : '';
+}
+
+function lightCompleteSentences(text){
+  return String(text || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map(line => {
+      const trimmed = line.trim();
+      if (!trimmed || isNilLike(trimmed)) return '';
+      if (/[:;]$/.test(trimmed) || /^[\d]+[.)]\s/.test(trimmed) || /^[-•]/.test(trimmed)) return trimmed;
+      if (/[.!?)]$/.test(trimmed)) return trimmed;
+      return `${trimmed}.`;
+    })
+    .filter(Boolean)
+    .join('\n');
+}
+
+function labelledLine(label, value){
+  const content = lightCompleteSentences(value);
+  return content ? `${label}: ${content}` : '';
+}
+
+function localDischargeSummaryFromVisitNote(record, sourceText){
+  const identity = patientIdentity(record);
+  const config = templateHeadingConfigForRecord({selectedMode:'Visit note'});
+  const parsed = parseTemplateSectionText(sourceText, config).sections;
+  const section = heading => nonNilSection(parsed.get(heading));
+  const diagnosis = section('Final diagnosis') || section('Provisional diagnosis');
+  const history = [
+    labelledLine('Chief complaints', section('Chief complaints')),
+    labelledLine('History', section('History')),
+    labelledLine('Previous treatment', section('Previous treatment')),
+    labelledLine('Nutritional status', section('Nutritional status'))
+  ].filter(Boolean).join('\n');
+  const examination = lightCompleteSentences(section('Examination'));
+  const planOfCare = lightCompleteSentences(section('Plan of care'));
+  const allergies = lightCompleteSentences(section('Allergies'));
+  const lines = [
+    `Name: ${identity.name || 'NIL'}    Age/Gender: ${[identity.age, identity.sex].filter(value => value && !isNilLike(value)).join(' / ') || 'NIL'}    UHID: ${identity.uhid || 'NIL'}    IP No.: NIL`,
+    'Address: NIL',
+    'Consultant: NIL    DOA: NIL    DOD: NIL',
+    '',
+    `DIAGNOSIS:\n${diagnosis ? lightCompleteSentences(diagnosis) : 'NIL'}`,
+    '',
+    'PROCEDURE DONE:\nNIL',
+    '',
+    `DRUG ALLERGY:\n${allergies || 'NIL'}`,
+    '',
+    `HISTORY:\n${history || 'NIL'}`,
+    '',
+    `CLINICAL EXAMINATION:\n${examination || 'NIL'}`,
+    '',
+    'INVESTIGATIONS:\nNIL',
+    '',
+    'LAB:\nNIL',
+    '',
+    'RADIOLOGY:\nNIL',
+    '',
+    'PROCEDURE / OPERATION NOTES:\nNIL',
+    '',
+    'OTHERS:\nNIL',
+    '',
+    'GENERAL INSTRUCTIONS:\nNIL',
+    '',
+    'REASON FOR ADMISSION:\nNIL',
+    '',
+    `COURSE IN HOSPITAL:\n${planOfCare || 'NIL'}`,
+    '',
+    'MEDICATIONS ADMINISTERED:\nNIL',
+    '',
+    'CONDITION AT DISCHARGE:\nNIL',
+    '',
+    'ADVICE ON DISCHARGE:\nNIL',
+    '',
+    'MEDICATIONS:\nNIL',
+    '',
+    'HOME MEDICATIONS:\nNIL',
+    '',
+    'DIET ADVICE:\nNIL',
+    '',
+    'FOLLOW UP DATE:\nNIL',
+    '',
+    'REVIEW:\nNIL',
+    '',
+    'WHEN TO OBTAIN URGENT CARE:\nNIL'
+  ];
+  return formatDischargeSummaryText(lines.join('\n'));
+}
+
+async function generateDischargeSummaryFromCurrentVisitNote(){
+  if (!currentUser) return;
+  captureActiveEditorState();
+  const sourceRecord = currentEditableRecord() || opTimelineWorkingRecord();
+  if (!canGenerateDischargeSummaryForRecord(sourceRecord)){
+    showToast('Open a visit note first.');
+    return;
+  }
+  const sourceOwnerUid = noteOwnerUid(sourceRecord);
+  const editor = document.getElementById('generatedNoteEditor');
+  const editorMatchesSource = editor?.dataset?.noteId === sourceRecord.firestoreId && editor?.dataset?.noteOwner === sourceOwnerUid;
+  const sourceText = editorMatchesSource ? editorPlainText(editor) : sourceRecord.transcription || '';
+  const transcription = localDischargeSummaryFromVisitNote(sourceRecord, sourceText);
+  const now = new Date();
+  const visitDate = sourceRecord.visitDate || dateInputValue(selectedVisitDate);
+  const createdAt = now.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}) + ', ' + now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  const newDraftRef = doc(userNotesCollection());
+  const identity = patientIdentity(sourceRecord);
+  const patientData = {
+    name:identity.name || 'NIL',
+    age:identity.age || 'NIL',
+    uhid:identity.uhid || 'NIL',
+    sex:identity.sex || 'NIL'
+  };
+  const draftData = {
+    heading:'Discharge summary',
+    createdAt:null,
+    expiresAt:noteExpiryTimestamp(),
+    createdAtLabel:createdAt,
+    visitDate,
+    visitType:'OP',
+    admissionDate:null,
+    isDraft:false,
+    everSaved:true,
+    saved:true,
+    kind:'generated',
+    voiceDraft:false,
+    selectedMode:'Discharge summary',
+    status:'Generated from visit note',
+    transcription,
+    patientData,
+    sourcePatientKey:patientSearchKey(sourceRecord),
+    sourceNoteId:sourceRecord.firestoreId || null,
+    carriedForwardFrom:sourceRecord.firestoreId || null,
+    sourceOwnerUid
+  };
+  selectedVisitType = 'OP';
+  if (visitDate){
+    const [year, month, day] = visitDate.split('-').map(Number);
+    if (year && month && day) selectedVisitDate = new Date(year, month - 1, day);
+  }
+  updateVisitToggle();
+  updateDateNavigation();
+  pendingSelectId = newDraftRef.id;
+  clearTimelineSelection();
+  selectLocalDraftFromSnapshot({id:newDraftRef.id, data:() => draftData});
+  try{
+    await setDoc(newDraftRef,{...draftData,createdAt:serverTimestamp()},{merge:true});
+    subscribeToSelectedDate();
+    showToast('Discharge summary generated.');
+  }catch(error){
+    console.error('Local discharge summary save failed:', error);
+    showToast('Discharge summary opened locally, but saving is pending.');
+  }
 }
 
 function canonicalHeadingKey(value){
