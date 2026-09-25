@@ -39,18 +39,22 @@
   .btn:hover{ background:#F6F7F5; }
   .btn:active{ transform:scale(.97); }
   .app{ display:none; height:100vh; min-height:0; overflow:hidden; }
-  .app.authenticated{ display:grid; grid-template-columns:296px minmax(0,1fr) 76px; }
+  .app.authenticated{ display:grid; grid-template-columns:320px minmax(0,1fr); }
   .sidebar{ background:var(--panel); border-right:1px solid var(--border); display:flex; flex-direction:column; padding:20px 16px; min-width:0; min-height:0; overflow:hidden; }
   .admin-brand{ height:58px; display:flex; align-items:center; gap:12px; margin-bottom:24px; }
   .admin-brand-pill{ height:58px; border:3px solid #F45155; border-radius:999px; background:#17171D; color:#fff; display:flex; align-items:center; justify-content:center; gap:11px; padding:0 18px 0 14px; font-weight:800; font-size:24px; letter-spacing:1.1px; }
   .admin-brand-dot{ width:30px; height:30px; border-radius:50%; background:#F45155; border:8px solid #452126; }
   .admin-brand-word{ font-size:24px; font-weight:800; color:var(--ink); letter-spacing:0; }
   .sidebar-section-label{ color:#7C847C; font-weight:800; font-size:11px; letter-spacing:.09em; text-transform:uppercase; margin:10px 4px 12px; }
+  .admin-search{ margin:0 4px 12px; }
+  .admin-search-input{ width:100%; height:42px; border:1.5px solid #D8E1E7; border-radius:11px; padding:0 12px; outline:none; color:var(--ink); background:#fff; font:800 13px 'Inter',sans-serif; }
+  .admin-search-input::placeholder{ color:#8B958E; text-transform:uppercase; letter-spacing:.04em; }
+  .admin-search-input:focus{ border-color:#8FB9AC; box-shadow:0 0 0 3px rgba(143,185,172,.18); }
   #adminVisitToggle{ display:none !important; }
   .sidebar .visit-toggle{ height:44px; margin:0 4px 16px; justify-content:center; }
   .sidebar .visit-toggle-btn{ height:34px; flex:1; font-size:13px; }
   .entry-list{ flex:1; min-height:0; display:flex; flex-direction:column; gap:8px; overflow:auto; overscroll-behavior:contain; padding-right:2px; }
-  .entry{ position:relative; width:100%; border:1px solid transparent; background:transparent; border-radius:12px; padding:12px 38px 12px 12px; display:flex; align-items:center; gap:12px; cursor:pointer; text-align:left; color:var(--ink); }
+  .entry{ position:relative; width:100%; border:1px solid transparent; background:transparent; border-radius:12px; padding:12px 42px 12px 12px; display:flex; align-items:center; gap:12px; cursor:pointer; text-align:left; color:var(--ink); }
   .entry:hover{ background:#F6F8F6; }
   .entry.uncopied{ background:var(--red-wash); border-color:#F3B3A9; color:#DB412D; }
   .entry.active{ background:var(--teal-wash); border-color:rgba(31,95,82,.35); color:var(--teal-deep); }
@@ -63,6 +67,7 @@
   .entry.uncopied .entry-owner{ color:rgba(219,65,45,.78); }
   .entry-name{ font-weight:800; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .entry-meta{ color:var(--muted); font:700 11px 'IBM Plex Mono',monospace; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .entry-submeta{ color:#87928B; font:700 10.5px 'IBM Plex Mono',monospace; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .main{ min-width:0; min-height:0; overflow:hidden; display:flex; flex-direction:column; background:#fff; }
   .main-topbar{ height:64px; min-height:64px; display:flex; align-items:center; gap:12px; padding:0 20px; border-bottom:1px solid var(--border); background:#fff; }
   .topbar-title{ font-weight:800; min-width:170px; }
@@ -80,6 +85,8 @@
   .copy-btn{ border-color:rgba(31,95,82,0.3); color:var(--teal-deep); }
   .copy-btn:hover{ background:var(--teal-wash); }
   .copy-btn.copied{ background:var(--teal); color:#fff; border-color:var(--teal); }
+  .emr-status{ display:none; color:var(--muted); font-size:12px; font-weight:800; white-space:nowrap; }
+  .emr-status.visible{ display:inline-flex; }
   .print-btn{ border-color:rgba(31,95,82,0.3); color:var(--teal-deep); }
   .print-btn:hover{ background:var(--teal-wash); }
   .rx-print-btn{ display:none; border-color:rgba(31,95,82,0.3); color:var(--teal-deep); min-width:74px; }
@@ -180,13 +187,6 @@
   .note-editor .rx-instructions div + div{ color:var(--muted); }
   .empty-state{ height:100%; display:flex; align-items:center; justify-content:center; flex-direction:column; color:var(--muted); text-align:center; padding:32px; }
   .empty-title{ font:600 30px 'Fraunces',serif; color:#1E2521; margin-bottom:8px; }
-  .user-rail{ width:76px; min-height:0; border-left:1px solid var(--border); background:#FAFBF9; display:flex; flex-direction:column; align-items:center; padding:14px 8px; gap:8px; overflow:auto; overscroll-behavior:contain; }
-  .rail-label{ color:#7C847C; font-size:10px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; margin:4px 0 8px; }
-  .user-pill{ width:54px; min-height:38px; border:1px solid var(--teal); border-radius:12px; background:var(--teal); color:#fff; font:800 12px 'Inter',sans-serif; cursor:pointer; }
-  .user-pill:hover{ background:var(--teal-deep); border-color:var(--teal-deep); }
-  .user-pill.pending{ background:var(--red); border-color:var(--red); }
-  .user-pill.pending:hover{ background:#B93B28; border-color:#B93B28; }
-  .user-pill.active{ box-shadow:0 0 0 3px rgba(31,95,82,.18); }
   .blocked{ color:var(--red); background:var(--red-wash); border:1px solid #F3B3A9; border-radius:12px; padding:14px; font-size:13px; }
   .modal{ position:fixed; inset:0; z-index:40; display:none; align-items:center; justify-content:center; padding:22px; background:rgba(20,27,24,.34); }
   .modal.open{ display:flex; }
@@ -197,15 +197,13 @@
   .modal-close{ width:36px; height:36px; border:1px solid var(--border); border-radius:10px; background:#fff; cursor:pointer; font-size:22px; line-height:1; }
   .danger-btn{ color:var(--red); border-color:#F3B3A9; }
   @media (max-width:900px){
-    .app.authenticated{ grid-template-columns:240px 1fr 66px; }
+    .app.authenticated{ grid-template-columns:270px 1fr; }
     .sidebar{ padding:16px 12px; }
     .main-scroll{ padding:26px 24px 70px; }
     .note-editor .rx-row{
       grid-template-columns:26px minmax(150px, 38%) minmax(0,1fr);
       column-gap:9px;
     }
-    .user-rail{ width:66px; }
-    .user-pill{ width:48px; }
   }
 </style>
 </head>
@@ -230,6 +228,9 @@
       <button class="visit-toggle-btn active" data-admin-visit-type="OP">OP</button>
       <button class="visit-toggle-btn" data-admin-visit-type="IP">IP</button>
     </div>
+    <div class="admin-search">
+      <input class="admin-search-input" id="adminSearchInput" type="search" autocomplete="off" placeholder="Search name or UHID" aria-label="Search notes by name or UHID">
+    </div>
     <div class="sidebar-section-label" id="notesLabel">Notes</div>
     <div class="entry-list" id="entryList"></div>
   </aside>
@@ -249,6 +250,8 @@
       </div>
       <button class="btn copy-btn" id="saveNoteBtn" style="display:none;">Save</button>
       <button class="btn discharge-btn" id="dischargeBtn" style="display:none;">Discharge</button>
+      <button class="btn copy-btn" id="sendEmrBtn" style="display:none;">Send to EMR</button>
+      <span class="emr-status" id="emrStatus" aria-live="polite">Coming soon</span>
       <button class="btn copy-btn" id="copyBtn" style="display:none;">Copy note</button>
       <div class="print-wrap" id="adminPrintWrap">
         <button class="btn print-menu-btn" id="adminPrintMenuBtn" type="button" aria-label="Print options" aria-haspopup="true" aria-expanded="false">Print</button>
@@ -270,9 +273,6 @@
     </div>
     <div class="main-scroll" id="mainScroll"></div>
   </main>
-  <nav class="user-rail" id="userRail" aria-label="Users">
-    <div class="rail-label">Users</div>
-  </nav>
 </div>
 
 <script type="module">
@@ -299,7 +299,7 @@ const loginSubmit = document.getElementById('loginSubmit');
 const loginError = document.getElementById('loginError');
 const appShell = document.getElementById('appShell');
 const entryList = document.getElementById('entryList');
-const userRail = document.getElementById('userRail');
+const adminSearchInput = document.getElementById('adminSearchInput');
 const mainScroll = document.getElementById('mainScroll');
 const topbarTitle = document.getElementById('topbarTitle');
 const topbarMeta = document.getElementById('topbarMeta');
@@ -311,6 +311,8 @@ const adminVisitDateInput = document.getElementById('adminVisitDateInput');
 const adminTodayBtn = document.getElementById('adminTodayBtn');
 const saveNoteBtn = document.getElementById('saveNoteBtn');
 const dischargeBtn = document.getElementById('dischargeBtn');
+const sendEmrBtn = document.getElementById('sendEmrBtn');
+const emrStatus = document.getElementById('emrStatus');
 const copyBtn = document.getElementById('copyBtn');
 const printBtn = document.getElementById('printBtn');
 const rxPrintBtn = document.getElementById('rxPrintBtn');
@@ -338,10 +340,12 @@ let selectedNoteId = null;
 let selectedTimelineEntryId = 'all';
 let selectedVisitType = 'OP';
 let selectedVisitDate = new Date();
+let adminSearchTerm = '';
 let adminDateTouched = false;
 let currentAdminUid = null;
 let adminPrintCloseTimer = null;
 let adminTimelineCloseTimer = null;
+let emrStatusTimer = null;
 
 const DEFAULT_PRESCRIPTION_LAYOUT = {
   includeMalayalam:true,
@@ -1141,20 +1145,53 @@ function visibleNotes(){
   return allNotes.filter(note => note.data?.deleted !== true).filter(note => noteMatchesSelectedScope(note, selectedDate));
 }
 
+function noteSearchHaystack(note){
+  const patient = note.data?.patientData || {};
+  return [
+    notePatientName(note),
+    patient.uhid,
+    note.data?.uhid,
+    patient.age,
+    patient.sex,
+    userLabel(note.userId, 0),
+    noteOwnerCode(note, userLabel(note.userId, 0))
+  ].filter(Boolean).join(' ').toLowerCase();
+}
+
+function filteredVisibleNotes(){
+  const query = adminSearchTerm.trim().toLowerCase();
+  const notes = visibleNotes();
+  if (!query) return notes;
+  return notes.filter(note => noteSearchHaystack(note).includes(query));
+}
+
 function updateVisitToggle(){
   adminVisitToggle.querySelectorAll('[data-admin-visit-type]').forEach(button => {
     button.classList.toggle('active', button.dataset.adminVisitType === selectedVisitType);
   });
 }
 
+function compactVisitDateTime(note){
+  const date = note.data?.visitDate ? note.data.visitDate.split('-').reverse().join('/') : '';
+  const labelTime = String(note.data?.createdAtLabel || '').split(',').slice(1).join(',').trim();
+  if (date && labelTime) return `${date} ${labelTime}`;
+  return date || labelTime || '';
+}
+
 function noteMeta(note){
   const patient = note.data.patientData || {};
-  const pieces = [userLabel(note.userId, 0)];
+  const pieces = [];
+  const dateTime = compactVisitDateTime(note);
+  if (dateTime) pieces.push(dateTime);
   if (patient.uhid) pieces.push(`UHID ${patient.uhid}`);
-  if (patient.sex) pieces.push(compactSex(patient.sex));
   if (patient.age) pieces.push(cleanAge(patient.age));
-  if (note.data.visitDate) pieces.push(note.data.visitDate);
+  if (patient.sex) pieces.push(compactSex(patient.sex));
   return compactPatientMetaText(pieces.join(' · ') || note.userLabel);
+}
+
+function noteSubMeta(note){
+  const mode = note.data?.selectedMode || note.data?.heading || 'Saved note';
+  return compactPatientMetaText(mode);
 }
 
 function noteTime(note){
@@ -1249,6 +1286,8 @@ function hideAdminTimelineMenu(){
 
 function showEmpty(title, message){
   copyBtn.style.display = 'none';
+  sendEmrBtn.style.display = 'none';
+  emrStatus.classList.remove('visible');
   hideAdminPrintMenu();
   hideAdminTimelineMenu();
   saveNoteBtn.style.display = 'none';
@@ -1256,32 +1295,13 @@ function showEmpty(title, message){
   mainScroll.innerHTML = `<div class="empty-state"><div class="empty-title">${escapeHtml(title)}</div><div>${escapeHtml(message)}</div></div>`;
 }
 
-function renderUsers(){
-  userRail.querySelectorAll('.user-pill').forEach(button => button.remove());
-  users.forEach((user, index) => {
-    const button = document.createElement('button');
-    button.className = [
-      'user-pill',
-      hasUncopiedSavedNotes(user.uid) ? 'pending' : '',
-      user.uid === selectedUserId ? 'active' : ''
-    ].filter(Boolean).join(' ');
-    button.textContent = twoLetterCode(user.label, `U${index + 1}`);
-    button.title = user.label;
-    button.addEventListener('click', () => {
-      selectedUserId = user.uid;
-      selectedNoteId = null;
-      selectedTimelineEntryId = 'all';
-      render();
-    });
-    userRail.appendChild(button);
-  });
-}
-
 function renderEntries(){
   entryList.innerHTML = '';
-  const selectedUser = users.find(user => user.uid === selectedUserId);
-  const notes = visibleNotes().filter(note => note.userId === selectedUserId);
-  notesLabel.textContent = selectedUser ? selectedUser.label : 'Notes';
+  const notes = filteredVisibleNotes();
+  const totalCount = visibleNotes().length;
+  notesLabel.textContent = adminSearchTerm.trim()
+    ? `${notes.length} result${notes.length === 1 ? '' : 's'}`
+    : `${totalCount} note${totalCount === 1 ? '' : 's'}`;
   notes.forEach((note, index) => {
     const button = document.createElement('button');
     const serialNumber = notes.length - index;
@@ -1295,10 +1315,12 @@ function renderEntries(){
       <span class="entry-text">
         <div class="entry-name">${escapeHtml(notePatientName(note))}</div>
         <div class="entry-meta">${escapeHtml(noteMeta(note))}</div>
+        <div class="entry-submeta">${escapeHtml(noteSubMeta(note))}</div>
       </span>
-      <span class="entry-owner">${escapeHtml(noteOwnerCode(note, selectedUser?.label))}</span>
+      <span class="entry-owner">${escapeHtml(noteOwnerCode(note, userLabel(note.userId, 0)))}</span>
     `;
     button.addEventListener('click', () => {
+      selectedUserId = note.userId;
       selectedNoteId = note.id;
       selectedTimelineEntryId = 'all';
       render();
@@ -1347,21 +1369,21 @@ function renderAdminAllEntries(seedNote){
 
 function renderSelectedNote(){
   selectedVisitType = 'OP';
-  const selectedUser = users.find(user => user.uid === selectedUserId);
-  const notes = visibleNotes().filter(note => note.userId === selectedUserId);
-  const dateNote = notes.find(item => item.id === selectedNoteId);
+  const notes = filteredVisibleNotes();
+  const dateNote = notes.find(item => item.id === selectedNoteId && item.userId === selectedUserId);
   const note = dateNote || selectedAdminNote();
-  topbarTitle.textContent = selectedUser ? selectedUser.label : 'Admin notes';
-  topbarMeta.textContent = selectedUser ? `${notes.length} note${notes.length === 1 ? '' : 's'}` : 'Select a user';
-  if (!selectedUser){
-    showEmpty('No users yet', 'Notes will appear here after users save them.');
+  topbarTitle.textContent = 'Admin notes';
+  topbarMeta.textContent = `${visibleNotes().length} note${visibleNotes().length === 1 ? '' : 's'} · ${users.length} mapped user${users.length === 1 ? '' : 's'}`;
+  if (!visibleNotes().length){
+    showEmpty('No notes', 'Notes from mapped users will appear here after they save them.');
     return;
   }
   if (!notes.length){
-    showEmpty('No notes', `${selectedUser.label} has no notes yet.`);
+    showEmpty('No matches', 'No notes match this name or UHID search.');
     return;
   }
-  if (!note){
+  if (!note || !notes.some(item => item.id === note.id && item.userId === note.userId)){
+    selectedUserId = notes[0].userId;
     selectedNoteId = notes[0].id;
     selectedTimelineEntryId = 'all';
     renderSelectedNote();
@@ -1377,6 +1399,7 @@ function renderSelectedNote(){
   const layout = prescriptionLayoutForNote(timelineNote);
   const hasText = selectedTimelineEntryId === 'all' ? timelineNotes.some(item => item.data?.transcription) : Boolean(text);
   copyBtn.style.display = hasText ? 'inline-flex' : 'none';
+  sendEmrBtn.style.display = hasText ? 'inline-flex' : 'none';
   adminPrintWrap.classList.toggle('visible', hasText);
   adminTimelineWrap.classList.toggle('visible', timelineNotes.length > 1);
   renderAdminTimelineMenu();
@@ -1459,7 +1482,6 @@ function render(){
     selectedTimelineEntryId = 'all';
   }
   allNotes.sort((a,b) => noteTime(b) - noteTime(a));
-  renderUsers();
   renderEntries();
   renderSelectedNote();
 }
@@ -1617,6 +1639,11 @@ onAuthStateChanged(auth, user => {
 
 adminPreviousDateBtn.addEventListener('click', () => moveAdminDate(-1));
 adminNextDateBtn.addEventListener('click', () => moveAdminDate(1));
+adminSearchInput.addEventListener('input', () => {
+  adminSearchTerm = adminSearchInput.value;
+  selectedTimelineEntryId = 'all';
+  render();
+});
 adminTodayBtn.addEventListener('click', () => {
   adminDateTouched = true;
   selectedVisitDate = new Date();
@@ -1668,6 +1695,12 @@ copyBtn.addEventListener('click', async () => {
     copyBtn.textContent = 'Copy note';
     copyBtn.classList.remove('copied');
   }, 1500);
+});
+
+sendEmrBtn.addEventListener('click', () => {
+  clearTimeout(emrStatusTimer);
+  emrStatus.classList.add('visible');
+  emrStatusTimer = setTimeout(() => emrStatus.classList.remove('visible'), 1600);
 });
 
 dischargeBtn.addEventListener('click', async () => {
