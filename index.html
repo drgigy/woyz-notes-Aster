@@ -1113,16 +1113,6 @@ function updateDateNavigation(){
   adminTodayBtn.textContent = new Date().toLocaleDateString('en-US',{weekday:'long'});
 }
 
-function latestDateForSelectedType(){
-  return allNotes
-    .filter(note => noteVisitType(note) === 'OP')
-    .filter(note => note.data?.deleted !== true)
-    .map(note => note.data?.visitDate)
-    .filter(Boolean)
-    .sort()
-    .pop() || null;
-}
-
 function setSelectedVisitDateFromValue(value){
   const [year,month,day] = String(value || '').split('-').map(Number);
   if (year && month && day) selectedVisitDate = new Date(year,month-1,day);
@@ -1466,13 +1456,6 @@ async function writeAdminClipboardPayload(payload){
 }
 
 function render(){
-  if (!adminDateTouched){
-    const latestDate = latestDateForSelectedType();
-    if (latestDate){
-      setSelectedVisitDateFromValue(latestDate);
-      updateDateNavigation();
-    }
-  }
   const notes = visibleNotes();
   const userIds = Array.from(new Set(notes.map(note => note.userId))).sort();
   users = userIds.map((uid, index) => ({uid, label:userLabel(uid, index)}));
