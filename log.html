@@ -107,7 +107,7 @@
   .hour-bars{ height:42px; max-width:100%; overflow:hidden; display:flex; align-items:end; gap:5px; margin-top:16px; }
   .hour-bar{ flex:1 1 0; min-width:0; height:5px; border-radius:999px; background:#DFECE7; }
   .hour-bar.strong{ background:var(--teal); }
-  .dashboard{ min-width:0; display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:16px; align-items:start; }
+  .dashboard{ min-width:0; display:grid; grid-template-columns:minmax(0,1fr); gap:16px; align-items:start; }
   .dashboard.gemini-mode{ grid-template-columns:minmax(0,1fr); }
   .timeline-panel{ min-height:560px; overflow:hidden; }
   .panel-head{ min-height:48px; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 18px; border-bottom:1px solid var(--border); }
@@ -131,15 +131,10 @@
   .event-badge.notes{ background:#FFF3DA; color:#A7680F; }
   .event-badge.users{ background:#EAF0FF; color:#315FCC; }
   .event-badge.gemini{ background:#F0EAFE; color:#6D3BD6; }
-  .side-panels{ display:grid; gap:16px; }
-  .side-panels.hidden{ display:none; }
-  .active-list{ display:grid; gap:12px; padding:16px 18px; }
-  .active-user{ display:grid; grid-template-columns:38px 1fr auto; align-items:center; gap:12px; }
-  .mini-bar{ height:6px; background:#ECE9E2; border-radius:999px; overflow:hidden; margin-top:6px; }
-  .mini-fill{ height:100%; width:0; border-radius:999px; background:var(--teal); }
   .empty{ margin:30px; padding:28px; background:#fff; border:1px dashed var(--border); border-radius:14px; color:var(--muted); font-weight:800; text-align:center; }
-  .gemini-table-wrap{ width:100%; overflow-x:auto; }
-  .gemini-table{ width:100%; border-collapse:collapse; table-layout:fixed; }
+  .gemini-table-wrap{ width:100%; max-width:100%; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-gutter:stable; }
+  .gemini-table{ width:100%; min-width:1120px; border-collapse:collapse; table-layout:fixed; }
+  .activity-table{ min-width:1040px; }
   .gemini-table th,.gemini-table td{ border-bottom:1px solid #ECE8E1; padding:10px 12px; text-align:left; vertical-align:top; font-size:13px; }
   .gemini-table th{ color:#9299A4; font:900 11px 'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.08em; background:#FBFAF7; }
   .gemini-table td{ color:#303743; font-weight:700; overflow:hidden; text-overflow:ellipsis; }
@@ -158,7 +153,6 @@
     .app.authenticated{ grid-template-columns:270px minmax(0,1fr); }
     .summary-grid{ grid-template-columns:repeat(2,minmax(160px,1fr)); }
     .dashboard{ grid-template-columns:1fr; }
-    .side-panels{ grid-template-columns:repeat(2,minmax(0,1fr)); }
   }
   @media (max-width:850px){
     .app.authenticated{ grid-template-columns:1fr; }
@@ -167,7 +161,7 @@
     .hero{ grid-template-columns:1fr; }
     h1{ font-size:40px; }
     .toolbar{ justify-content:flex-start; padding-top:0; }
-    .summary-grid,.side-panels{ grid-template-columns:1fr; }
+    .summary-grid{ grid-template-columns:1fr; }
     .event-row{ grid-template-columns:76px 28px 1fr; }
     .event-row::before{ left:111px; }
     .event-badge{ grid-column:3; justify-self:start; }
@@ -181,7 +175,7 @@
   <form class="login-card" id="loginForm">
     <div class="brand"><span class="brand-pill"><span class="brand-dot"></span>WOYZ</span><span>Log</span></div>
     <h1>Activity log</h1>
-    <p class="sub">Master admin access only.</p>
+    <p class="sub">Activity log admin access only.</p>
     <label for="loginEmail">Email address</label>
     <input id="loginEmail" type="email" autocomplete="username" required>
     <label for="loginPassword">Password</label>
@@ -221,7 +215,7 @@
     </div>
     <div class="sidebar-foot">
       <div class="avatar" id="footerAvatar">DG</div>
-      <div class="user-lines"><strong>Dr. Gigy</strong><span id="userEmail"></span></div>
+      <div class="user-lines"><strong>Log Admin</strong><span id="userEmail"></span></div>
       <button class="signout-link" id="signoutBtn" type="button">Sign out</button>
     </div>
   </aside>
@@ -262,12 +256,6 @@
         <div class="panel-head"><div class="panel-title">Timeline</div><div class="panel-note">Newest first / duplicates grouped</div></div>
         <div class="timeline" id="logList"></div>
       </article>
-      <aside class="side-panels" id="sidePanels">
-        <article class="panel">
-          <div class="panel-head"><div class="label">Who's active</div></div>
-          <div class="active-list" id="activeUsers"></div>
-        </article>
-      </aside>
     </section>
   </main>
 </div>
@@ -278,8 +266,7 @@ import { browserLocalPersistence, getAuth, onAuthStateChanged, setPersistence, s
 import { getFirestore, collection, limit, onSnapshot, orderBy, query } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
 
-const MASTER_ADMIN_UID = 'kzlnh5rBzpTlYEqF7Ou35F1YWaa2';
-const MASTER_ADMIN_EMAIL = 'drgigy@gmail.com';
+const LOG_ADMIN_EMAIL = 'aster-admin@woyz.in';
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -303,9 +290,7 @@ const nextDateBtn = document.getElementById('nextDateBtn');
 const refreshBtn = document.getElementById('refreshBtn');
 const signoutBtn = document.getElementById('signoutBtn');
 const logList = document.getElementById('logList');
-const activeUsers = document.getElementById('activeUsers');
 const dashboardGrid = document.getElementById('dashboardGrid');
-const sidePanels = document.getElementById('sidePanels');
 const hourBars = document.getElementById('hourBars');
 const streamButtons = Array.from(document.querySelectorAll('.stream-btn'));
 const noteSubfilters = document.getElementById('noteSubfilters');
@@ -716,41 +701,11 @@ function renderGeminiTimeline(visible){
   `).join('');
 }
 
-function renderActiveUsers(dateLogs){
-  const users = new Map();
-  dateLogs.forEach(log => {
-    const key = logActor(log);
-    const date = logDate(log);
-    const item = users.get(key) || {key, count:0, last:null};
-    item.count += 1;
-    if (date && (!item.last || date > item.last)) item.last = date;
-    users.set(key, item);
-  });
-  const sorted = Array.from(users.values()).sort((a, b) => b.count - a.count).slice(0, 4);
-  if (!sorted.length){
-    activeUsers.innerHTML = '<div class="stat-sub">No active users for this date.</div>';
-    return;
-  }
-  const max = Math.max(...sorted.map(user => user.count), 1);
-  activeUsers.innerHTML = sorted.map(user => `
-    <div class="active-user">
-      <div class="avatar">${escapeHtml(initials(user.key))}</div>
-      <div class="user-lines">
-        <strong>${escapeHtml(user.key.replace(/@.*/, '') || 'User')}</strong>
-        <span>Last seen ${escapeHtml(user.last ? timeText(user.last) : '--')}</span>
-        <div class="mini-bar"><div class="mini-fill" style="width:${Math.max(12, Math.round(user.count / max * 100))}%"></div></div>
-      </div>
-      <strong>${user.count}</strong>
-    </div>
-  `).join('');
-}
-
 function render(){
   const dateLogs = baseDateLogs();
   const visible = filteredLogs();
   noteSubfilters.classList.toggle('visible', selectedActivityTab === 'notes');
   dashboardGrid.classList.toggle('gemini-mode', selectedActivityTab === 'gemini');
-  sidePanels.classList.toggle('hidden', selectedActivityTab === 'gemini');
   noteFilterButtons.forEach(button => button.classList.toggle('active', button.dataset.noteFilter === selectedNoteFilter));
   updateCounts(dateLogs);
   updateStats(visible, dateLogs);
@@ -760,7 +715,6 @@ function render(){
   }else{
     renderTimeline(visible);
   }
-  renderActiveUsers(dateLogs);
 }
 
 function subscribeLogs(){
@@ -818,7 +772,7 @@ onAuthStateChanged(auth, user => {
     return;
   }
   const email = String(user.email || '').toLowerCase();
-  if (user.uid !== MASTER_ADMIN_UID && email !== MASTER_ADMIN_EMAIL){
+  if (email !== LOG_ADMIN_EMAIL){
     signOut(auth).catch(() => {});
     appShell.classList.remove('authenticated');
     loginScreen.classList.remove('hidden');

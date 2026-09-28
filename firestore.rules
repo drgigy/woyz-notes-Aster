@@ -14,6 +14,11 @@ service cloud.firestore {
         );
     }
 
+    function isActivityLogAdmin() {
+      return request.auth != null
+        && request.auth.token.email == "aster-admin@woyz.in";
+    }
+
     function sharedWith(userId) {
       return get(/databases/$(database)/documents/users/$(userId)).data.sharedWith;
     }
@@ -49,7 +54,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if signedInAs(userId) || isAdmin() || isMappedTo(userId);
+      allow read: if signedInAs(userId) || isAdmin() || isActivityLogAdmin() || isMappedTo(userId);
       allow create: if signedInAs(userId)
         && request.resource.data.keys().hasOnly(userProfileFields());
       allow create: if isAdmin()
@@ -106,7 +111,7 @@ service cloud.firestore {
     }
 
     match /activityLogs/{logId} {
-      allow read: if isAdmin();
+      allow read: if isAdmin() || isActivityLogAdmin();
       allow create: if request.auth != null
         && request.resource.data.keys().hasOnly([
           "action",
