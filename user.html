@@ -278,12 +278,19 @@
     transition:opacity .15s ease;
   }
   .home-action-status.visible{ opacity:1; }
-  .home-scan-input{
+  .home-scan-row{
     display:none;
     width:min(720px,100%);
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:8px;
+    align-items:center;
+    margin-top:8px;
+  }
+  .home-scan-row.visible{ display:grid; }
+  .home-scan-input{
+    width:100%;
     height:20px;
     min-height:20px;
-    margin-top:8px;
     border:1.5px solid #CFE1DA;
     border-radius:8px;
     padding:0 8px;
@@ -292,8 +299,17 @@
     font:800 12px 'Inter',sans-serif;
     outline:none;
   }
-  .home-scan-input.visible{ display:block; }
   .home-scan-input:focus{ border-color:var(--focus); box-shadow:0 0 0 3px rgba(143,185,172,.18); }
+  .home-scan-clear{
+    height:24px;
+    border:1px solid #DDE5E0;
+    border-radius:8px;
+    background:#fff;
+    color:var(--red);
+    padding:0 10px;
+    font:900 11px 'Inter',sans-serif;
+    cursor:pointer;
+  }
   .home-tool-item{
     width:100%;
     min-height:42px;
@@ -2333,9 +2349,10 @@
     .home-scan-input{
       height:19px;
       min-height:19px;
-      margin-top:5px;
       font-size:11px;
     }
+    .home-scan-row{ margin-top:5px; gap:6px; }
+    .home-scan-clear{ height:23px; padding:0 8px; font-size:10.5px; }
     .home-template-card{
       min-height:46px;
       border-radius:12px;
@@ -4931,7 +4948,10 @@ function showHomeScreen(){
         <button class="home-quick-btn" type="button" id="homeScanQrBtn">Scan QR</button>
       </div>
       <div class="home-action-status" id="homeActionStatus" aria-live="polite"></div>
-      <input class="home-scan-input" id="homeScanInput" type="text" autocomplete="off" inputmode="text" aria-label="Patient label OCR text" placeholder="Scan patient label text">
+      <div class="home-scan-row" id="homeScanRow">
+        <input class="home-scan-input" id="homeScanInput" type="text" autocomplete="off" inputmode="text" aria-label="Patient label OCR text" placeholder="Scan patient label text">
+        <button class="home-scan-clear" id="homeScanClearBtn" type="button">Clear</button>
+      </div>
       <div class="home-template-grid">
         <button class="home-template-card" type="button" data-home-template-mode="Discharge summary">
           <span class="home-template-title">Discharge summary</span>
@@ -4992,7 +5012,9 @@ function showHomeScreen(){
       </div>
     </div>`;
   const homeActionStatus = mainScroll.querySelector('#homeActionStatus');
+  const homeScanRow = mainScroll.querySelector('#homeScanRow');
   const homeScanInput = mainScroll.querySelector('#homeScanInput');
+  const homeScanClearBtn = mainScroll.querySelector('#homeScanClearBtn');
   let homeActionStatusTimer = null;
   const flashHomeStatus = message => {
     if (!homeActionStatus) return;
@@ -5007,7 +5029,8 @@ function showHomeScreen(){
   const showHomeScanInput = () => {
     if (!homeScanInput) return;
     homeScanInput.value = '';
-    homeScanInput.classList.add('visible');
+    pendingHomePatientData = null;
+    homeScanRow?.classList.add('visible');
     flashHomeStatus('Scan patient label, then select a template.');
     setTimeout(() => {
       homeScanInput.focus();
@@ -5019,12 +5042,23 @@ function showHomeScreen(){
     const parsed = parsePatientLabelText(homeScanInput.value);
     if (!parsed) return;
     pendingHomePatientData = parsed;
-    homeScanInput.classList.remove('visible');
+    homeScanRow?.classList.remove('visible');
     homeScanInput.blur();
     flashHomeStatus('Please select a template');
   };
+  const clearHomeScanText = () => {
+    pendingHomePatientData = null;
+    if (homeScanInput) homeScanInput.value = '';
+    homeScanRow?.classList.add('visible');
+    flashHomeStatus('Scan cleared. Scan again or select a template.');
+    setTimeout(() => {
+      homeScanInput?.focus();
+      homeScanInput?.select();
+    }, 0);
+  };
   mainScroll.querySelector('#homeAddNewBtn')?.addEventListener('click', () => flashHomeStatus('Please select a template.'));
   mainScroll.querySelector('#homeScanQrBtn')?.addEventListener('click', showHomeScanInput);
+  homeScanClearBtn?.addEventListener('click', clearHomeScanText);
   homeScanInput?.addEventListener('input', handleHomeScanText);
   homeScanInput?.addEventListener('change', handleHomeScanText);
   mainScroll.querySelectorAll('[data-home-template-mode]').forEach(button => {
