@@ -1510,6 +1510,7 @@
     height:auto;
     margin:0 auto 14px;
   }
+  .home-doctor-credential{ display:none; }
 
   .mobile-app-bar,.mobile-backdrop,.mobile-visit-row,.mobile-bottom-actions{ display:none; }
 
@@ -2244,6 +2245,35 @@
     }
     .processing-wrap{ padding:24px 20px 110px; }
     .empty-state{ padding:18px 24px 58px; min-height:calc(100dvh - 112px); justify-content:flex-start; }
+    .home-state{ position:relative; }
+    .home-doctor-credential{
+      position:absolute;
+      right:12px;
+      bottom:12px;
+      display:grid;
+      gap:2px;
+      max-width:48vw;
+      padding:9px 11px;
+      border:1px solid #DDE7E1;
+      border-radius:12px;
+      background:rgba(255,255,255,.94);
+      box-shadow:0 14px 30px -24px rgba(0,0,0,.35);
+      text-align:right;
+    }
+    .home-doctor-credential span{
+      color:var(--ink);
+      font:900 12px/1.25 'Inter',sans-serif;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .home-doctor-credential small{
+      color:var(--muted);
+      font:800 10.5px/1.2 'IBM Plex Mono',monospace;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
     .mobile-bottom-actions{
       position:fixed;
       left:0; right:0; bottom:0;
@@ -4847,8 +4877,11 @@ function showHomeScreen(){
   deleteBtn.classList.remove('visible');
   dischargeBtn.classList.remove('visible');
   renderTimelineMenu();
+  const doctorCredential = doctorCredentialFromProfile(ownerProfiles[currentUser?.uid] || {});
+  const homeDoctorName = doctorCredential?.name || 'Not selected';
+  const homeDoctorId = doctorCredential?.employeeId ? `Emp ID: ${doctorCredential.employeeId}` : 'Doctor credential';
   mainScroll.innerHTML = `
-    <div class="empty-state">
+    <div class="empty-state home-state">
       <img class="home-brand-logo" src="./icons/woyz-er-home.png" alt="WOYZ ER">
       <div class="home-quick-actions">
         <button class="home-quick-btn primary" type="button" id="homeAddNewBtn">Add New</button>
@@ -4908,6 +4941,10 @@ function showHomeScreen(){
           </select>
         </div>
         <div class="gcs-total" id="gcsTotal">GCS 15/15</div>
+      </div>
+      <div class="home-doctor-credential" aria-label="Selected doctor credential">
+        <span>${escapeHtml(homeDoctorName)}</span>
+        <small>${escapeHtml(homeDoctorId)}</small>
       </div>
     </div>`;
   const homeActionStatus = mainScroll.querySelector('#homeActionStatus');
@@ -5116,6 +5153,7 @@ onAuthStateChanged(auth,user => {
       ownerProfiles[user.uid] = profile;
       prescriptionLayoutState = normalizedPrescriptionLayout(profile.prescriptionLayout);
       if (layoutModal.classList.contains('open')) loadLayoutModal();
+      if (homeModeActive) showHomeScreen();
       if (Array.isArray(profile.sharedWith)){
         applySharedOwners([user.uid, ...profile.sharedWith]);
       }
