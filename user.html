@@ -7342,7 +7342,7 @@ function isVisitNoteRecord(record){
 }
 
 function canGenerateDischargeSummaryForRecord(record){
-  return Boolean(record && isVisitNoteRecord(record) && !record.voiceDraft && !record.isDraft && (record.transcription || record.kind === 'generated'));
+  return false;
 }
 
 function nonNilSection(value){
