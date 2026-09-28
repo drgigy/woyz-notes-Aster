@@ -67,6 +67,7 @@
   .stream-btn[data-tab="notes"] .stream-dot{ background:var(--amber); }
   .stream-btn[data-tab="admin"] .stream-dot{ background:#80D4AC; }
   .stream-btn[data-tab="master"] .stream-dot{ background:var(--red); }
+  .stream-btn[data-tab="gemini"] .stream-dot{ background:#8B5CF6; }
   .pill-count{ min-width:30px; height:22px; border-radius:999px; display:grid; place-items:center; background:#ECEAE4; color:#7B817D; font-size:13px; font-weight:900; }
   .stream-btn.active .pill-count{ background:rgba(255,255,255,.2); color:#fff; }
   .quick-btn{ grid-template-columns:1fr auto; min-height:36px; padding:0 11px 0 13px; }
@@ -122,6 +123,7 @@
   .event-badge.master{ background:var(--red-wash); color:#CF3642; }
   .event-badge.notes{ background:#FFF3DA; color:#A7680F; }
   .event-badge.users{ background:#EAF0FF; color:#315FCC; }
+  .event-badge.gemini{ background:#F0EAFE; color:#6D3BD6; }
   .side-panels{ display:grid; gap:16px; }
   .active-list{ display:grid; gap:12px; padding:16px 18px; }
   .active-user{ display:grid; grid-template-columns:38px 1fr auto; align-items:center; gap:12px; }
@@ -177,6 +179,7 @@
       <button class="stream-btn" type="button" data-tab="notes"><span class="stream-dot"></span><span>Notes</span><span class="pill-count" id="countNotes">0</span></button>
       <button class="stream-btn" type="button" data-tab="admin"><span class="stream-dot"></span><span>Admin</span><span class="pill-count" id="countAdmin">0</span></button>
       <button class="stream-btn" type="button" data-tab="master"><span class="stream-dot"></span><span>Master</span><span class="pill-count" id="countMaster">0</span></button>
+      <button class="stream-btn" type="button" data-tab="gemini"><span class="stream-dot"></span><span>Gemini API use</span><span class="pill-count" id="countGemini">0</span></button>
     </div>
     <div class="side-section">
       <div class="side-title">Quick filters</div>
@@ -279,6 +282,7 @@ const countEls = {
   notes:document.getElementById('countNotes'),
   admin:document.getElementById('countAdmin'),
   master:document.getElementById('countMaster'),
+  gemini:document.getElementById('countGemini'),
   signins:document.getElementById('countSignins'),
   failed:document.getElementById('countFailed'),
   last60:document.getElementById('countLast60')
@@ -365,6 +369,11 @@ function categoryForLog(log){
   return 'admin';
 }
 
+function isGeminiApiLog(log){
+  const haystack = logHaystack(log);
+  return /gemini|generativelanguage|google ai|api use|api_usage|generatecontent|voice_note_generated|discharge_summary_generated|add_on_completed/.test(haystack);
+}
+
 function logMatchesRange(log){
   const date = logDate(log);
   if (!date) return false;
@@ -398,7 +407,8 @@ function baseDateLogs(){
 function filteredLogs(){
   const term = searchTerm.trim().toLowerCase();
   return baseDateLogs().filter(log => {
-    if (selectedActivityTab !== 'all' && categoryForLog(log) !== selectedActivityTab) return false;
+    if (selectedActivityTab === 'gemini' && !isGeminiApiLog(log)) return false;
+    if (selectedActivityTab !== 'all' && selectedActivityTab !== 'gemini' && categoryForLog(log) !== selectedActivityTab) return false;
     if (!logMatchesQuickFilter(log)) return false;
     if (term && !logHaystack(log).includes(term)) return false;
     return true;
@@ -437,9 +447,10 @@ function moveSelectedDate(days){
 }
 
 function updateCounts(dateLogs){
-  const counts = {all:dateLogs.length, users:0, notes:0, admin:0, master:0, signins:0, failed:0, last60:0};
+  const counts = {all:dateLogs.length, users:0, notes:0, admin:0, master:0, gemini:0, signins:0, failed:0, last60:0};
   dateLogs.forEach(log => {
     counts[categoryForLog(log)] += 1;
+    if (isGeminiApiLog(log)) counts.gemini += 1;
     const action = String(log.action || '').toLowerCase();
     if (action.includes('signed_in') || action.includes('sign')) counts.signins += 1;
     if (action.includes('failed') || action.includes('denied') || action.includes('error')) counts.failed += 1;
@@ -457,7 +468,7 @@ function updateStats(visible, dateLogs){
   const last = visible[0] || dateLogs[0];
   const lastDate = last ? logDate(last) : null;
   statEls.eventsToday.textContent = String(visible.length);
-  statEls.eventsSub.textContent = selectedActivityTab === 'all' ? 'All in Admin stream' : `${titleCaseAction(selectedActivityTab)} stream`;
+  statEls.eventsSub.textContent = selectedActivityTab === 'all' ? 'All in Admin stream' : `${selectedActivityTab === 'gemini' ? 'Gemini API use' : titleCaseAction(selectedActivityTab)} stream`;
   statEls.uniqueUsers.textContent = String(userMap.size);
   statEls.uniqueSub.textContent = Array.from(userMap.keys()).slice(0, 2).map(value => value.replace(/@.*/, '')).join(' / ') || 'No users yet';
   statEls.lastActivity.textContent = lastDate ? timeText(lastDate).replace(/\s/g, ' ') : '--';
@@ -492,7 +503,7 @@ function renderTimeline(visible){
     <section class="hour-group">
       <div class="hour-label">${escapeHtml(hour)} - ${group.length} ${group.length === 1 ? 'event' : 'events'}</div>
       ${group.map(log => {
-        const category = categoryForLog(log);
+        const category = selectedActivityTab === 'gemini' && isGeminiApiLog(log) ? 'gemini' : categoryForLog(log);
         const date = logDate(log);
         const user = log.email || log.userId || 'Unknown user';
         return `
