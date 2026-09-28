@@ -84,8 +84,8 @@
       <div class="brand-pill"><span class="brand-dot"></span><span>WOYZ</span></div>
       <div class="brand-word">QR</div>
     </div>
-    <h1>Master admin login</h1>
-    <p class="hint">Sign in with the master admin account to generate doctor QR codes.</p>
+    <h1>QR generator login</h1>
+    <p class="hint">Sign in with the QR generator account to generate doctor QR codes.</p>
     <label for="loginEmail">Email</label>
     <input id="loginEmail" type="email" autocomplete="username" required>
     <label for="loginPassword">Password</label>
@@ -142,8 +142,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/fireba
 import { browserLocalPersistence, getAuth, onAuthStateChanged, setPersistence, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { firebaseConfig } from './firebase-config.js';
 
-const MASTER_ADMIN_UID = 'kzlnh5rBzpTlYEqF7Ou35F1YWaa2';
-const MASTER_ADMIN_EMAIL = 'drgigy@gmail.com';
+const QR_GENERATOR_EMAIL = 'aster-admin@woyz.in';
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 setPersistence(auth, browserLocalPersistence).catch(error => console.warn('Unable to enable persistent login:', error));
@@ -174,8 +173,8 @@ const FORMAT_MASK = 0x5412;
 const FORMAT_POLY = 0x537;
 let currentPayload = '';
 
-function isMasterAdmin(user){
-  return !!user && (user.uid === MASTER_ADMIN_UID || String(user.email || '').toLowerCase() === MASTER_ADMIN_EMAIL);
+function isQrGeneratorUser(user){
+  return !!user && String(user.email || '').toLowerCase() === QR_GENERATOR_EMAIL;
 }
 
 function escapeFilename(value){
@@ -416,7 +415,7 @@ loginForm.addEventListener('submit', async event => {
     await signInWithEmailAndPassword(auth, loginEmail.value.trim(), loginPassword.value);
     loginPassword.value = '';
   }catch(error){
-    loginError.textContent = 'Unable to sign in. Check the master admin email and password.';
+    loginError.textContent = 'Unable to sign in. Check the QR generator email and password.';
   }finally{
     loginSubmit.disabled = false;
     loginSubmit.textContent = 'Sign in';
@@ -434,9 +433,9 @@ onAuthStateChanged(auth, async user => {
     userEmail.textContent = '';
     return;
   }
-  if (!isMasterAdmin(user)){
+  if (!isQrGeneratorUser(user)){
     await signOut(auth).catch(error => console.error(error));
-    loginError.textContent = 'This page is restricted to the master admin account.';
+    loginError.textContent = 'This page is restricted to the QR generator account.';
     appShell.classList.remove('authenticated');
     loginScreen.classList.remove('hidden');
     userEmail.textContent = '';
