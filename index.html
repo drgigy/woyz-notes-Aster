@@ -248,7 +248,7 @@
         <button class="date-step" id="adminNextDateBtn" aria-label="Next day">&rsaquo;</button>
         <button class="date-today" id="adminTodayBtn" title="Jump to today"></button>
       </div>
-      <button class="btn copy-btn" id="saveNoteBtn" style="display:none;">Save</button>
+      <button class="btn copy-btn" id="saveNoteBtn" style="display:none;">Review</button>
       <button class="btn discharge-btn" id="dischargeBtn" style="display:none;">Discharge</button>
       <button class="btn copy-btn" id="sendEmrBtn" style="display:none;">Send to EMR</button>
       <span class="emr-status" id="emrStatus" aria-live="polite">Coming soon</span>
@@ -1266,8 +1266,30 @@ function isSavedNote(note){
   return note.data?.isDraft === false || note.data?.everSaved === true;
 }
 
+function isReviewedNote(note){
+  return Boolean(note?.data?.adminCopiedAt);
+}
+
+function reviewedHeadingValue(value){
+  return String(value || '').replace(/\s+draft$/i, '').trim();
+}
+
+function reviewedStatusPatch(note){
+  const patch = {
+    isDraft:false,
+    everSaved:true,
+    adminCopiedAt:serverTimestamp(),
+    adminCopiedBy:currentAdminUid || ''
+  };
+  const selectedMode = reviewedHeadingValue(note?.data?.selectedMode);
+  const heading = reviewedHeadingValue(note?.data?.heading);
+  if (selectedMode) patch.selectedMode = selectedMode;
+  if (heading) patch.heading = heading;
+  return patch;
+}
+
 function hasUncopiedSavedNotes(userId){
-  return visibleNotes().some(note => note.userId === userId && isSavedNote(note) && !note.data.adminCopiedAt);
+  return visibleNotes().some(note => note.userId === userId && isSavedNote(note) && !isReviewedNote(note));
 }
 
 function userLabel(userId, index){
@@ -1362,7 +1384,7 @@ function renderEntries(){
     const serialNumber = notes.length - index;
     button.className = [
       'entry',
-      isSavedNote(note) && !note.data.adminCopiedAt ? 'uncopied' : '',
+      isSavedNote(note) && !isReviewedNote(note) ? 'uncopied' : '',
       note.id === selectedNoteId ? 'active' : ''
     ].filter(Boolean).join(' ');
     button.innerHTML = `
@@ -1462,7 +1484,9 @@ function renderSelectedNote(){
   saveNoteBtn.style.display = 'inline-flex';
   updateDischargeButton(selectedTimelineEntryId === 'all' ? note : timelineNote);
   updatePrescriptionPrintButton(selectedTimelineEntryId === 'all' ? null : timelineNote);
-  saveNoteBtn.textContent = 'Save';
+  const reviewTargets = selectedTimelineEntryId === 'all' ? timelineNotes : [timelineNote];
+  const allReviewed = reviewTargets.length > 0 && reviewTargets.every(isReviewedNote);
+  saveNoteBtn.textContent = allReviewed ? 'Reviewed' : 'Review';
   saveNoteBtn.classList.remove('copied');
   copyBtn.classList.remove('copied');
   copyBtn.textContent = 'Copy note';
@@ -1731,14 +1755,6 @@ copyBtn.addEventListener('click', async () => {
   const payload = selectedAdminCopyPayload();
   if (!payload.text) return;
   try{ await writeAdminClipboardPayload(payload); }catch(error){}
-  try{
-    if (note) await updateDoc(doc(db,note.path),{
-      adminCopiedAt:serverTimestamp(),
-      adminCopiedBy:currentAdminUid || ''
-    });
-  }catch(error){
-    console.error(error);
-  }
   copyBtn.textContent = 'Copied';
   copyBtn.classList.add('copied');
   if (note) safeLogActivity('admin_note_copied', noteLogPayload(note));
@@ -2040,7 +2056,7 @@ saveNoteBtn.addEventListener('click', async () => {
   if (selectedTimelineEntryId === 'all' && !allEditors.length) return;
   if (selectedTimelineEntryId !== 'all' && (!note || !editor)) return;
   saveNoteBtn.disabled = true;
-  saveNoteBtn.textContent = 'Saving...';
+  saveNoteBtn.textContent = 'Reviewing...';
   try{
     if (selectedTimelineEntryId === 'all'){
       const editedNotes = [];
@@ -2052,33 +2068,55 @@ saveNoteBtn.addEventListener('click', async () => {
         const patientData = extractPatientFromNote(transcription, entryNote.data.patientData);
         entryNote.data.transcription = transcription;
         entryNote.data.patientData = patientData;
+        entryNote.data.isDraft = false;
+        entryNote.data.everSaved = true;
+        entryNote.data.adminCopiedAt = new Date();
+        entryNote.data.adminCopiedBy = currentAdminUid || '';
+        const selectedMode = reviewedHeadingValue(entryNote.data.selectedMode);
+        const heading = reviewedHeadingValue(entryNote.data.heading);
+        if (selectedMode) entryNote.data.selectedMode = selectedMode;
+        if (heading) entryNote.data.heading = heading;
         return updateDoc(doc(db,entryNote.path),{
           transcription,
           patientData,
           adminEditedAt:serverTimestamp(),
-          adminEditedBy:currentAdminUid || ''
+          adminEditedBy:currentAdminUid || '',
+          ...reviewedStatusPatch(entryNote)
         });
       }));
-      editedNotes.forEach(entryNote => safeLogActivity('admin_note_edited', noteLogPayload(entryNote)));
+      editedNotes.forEach(entryNote => {
+        safeLogActivity('admin_note_edited', noteLogPayload(entryNote));
+        safeLogActivity('admin_note_reviewed', noteLogPayload(entryNote));
+      });
     }else{
       const transcription = editorPlainText(editor);
       const patientData = extractPatientFromNote(transcription, note.data.patientData);
       note.data.transcription = transcription;
       note.data.patientData = patientData;
+      note.data.isDraft = false;
+      note.data.everSaved = true;
+      note.data.adminCopiedAt = new Date();
+      note.data.adminCopiedBy = currentAdminUid || '';
+      const selectedMode = reviewedHeadingValue(note.data.selectedMode);
+      const heading = reviewedHeadingValue(note.data.heading);
+      if (selectedMode) note.data.selectedMode = selectedMode;
+      if (heading) note.data.heading = heading;
       await updateDoc(doc(db,note.path),{
         transcription,
         patientData,
         adminEditedAt:serverTimestamp(),
-        adminEditedBy:currentAdminUid || ''
+        adminEditedBy:currentAdminUid || '',
+        ...reviewedStatusPatch(note)
       });
       safeLogActivity('admin_note_edited', noteLogPayload(note));
+      safeLogActivity('admin_note_reviewed', noteLogPayload(note));
     }
     renderEntries();
     renderAdminTimelineMenu();
-    saveNoteBtn.textContent = 'Saved';
+    saveNoteBtn.textContent = 'Reviewed';
     saveNoteBtn.classList.add('copied');
     setTimeout(() => {
-      saveNoteBtn.textContent = 'Save';
+      saveNoteBtn.textContent = 'Reviewed';
       saveNoteBtn.classList.remove('copied');
       saveNoteBtn.disabled = false;
     }, 1200);
