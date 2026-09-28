@@ -278,7 +278,7 @@
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
 import { browserLocalPersistence, getAuth, onAuthStateChanged, setPersistence, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
-import { getFirestore, collection, collectionGroup, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
+import { getFirestore, addDoc, collection, collectionGroup, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
 
 const MASTER_ADMIN_UID = 'kzlnh5rBzpTlYEqF7Ou35F1YWaa2';
@@ -290,6 +290,41 @@ const authPersistenceReady = setPersistence(auth, browserLocalPersistence).catch
   console.warn('Unable to enable persistent login:', error);
 });
 const db = getFirestore(app);
+
+function cleanLogValue(value, maxLength = 160){
+  return String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+}
+
+function noteLogPayload(note = {}){
+  const patient = note.data?.patientData || {};
+  return {
+    noteId:cleanLogValue(note.id || '', 120),
+    noteOwnerUid:cleanLogValue(note.userId || '', 120),
+    noteType:cleanLogValue(noteDocumentMode(note) || note.data?.heading || '', 120),
+    patientName:cleanLogValue(patient.name || '', 160),
+    uhid:cleanLogValue(patient.uhid || note.data?.uhid || '', 80),
+    visitDate:cleanLogValue(note.data?.visitDate || '', 20),
+    visitType:cleanLogValue(note.data?.visitType || '', 20)
+  };
+}
+
+function safeLogActivity(action, info = {}){
+  const user = auth.currentUser;
+  if (!user) return;
+  const payload = {
+    action:cleanLogValue(action, 80),
+    page:'index',
+    userId:user.uid,
+    email:cleanLogValue(user.email || '', 160),
+    createdAt:serverTimestamp()
+  };
+  const logFieldLimits = {noteId:120,noteOwnerUid:120,noteType:120,patientName:160,uhid:80,visitDate:20,visitType:20};
+  Object.entries(logFieldLimits).forEach(([key, maxLength]) => {
+    const value = cleanLogValue(info[key] || '', maxLength);
+    if (value) payload[key] = value;
+  });
+  addDoc(collection(db,'activityLogs'), payload).catch(error => console.warn('Activity log failed:', error));
+}
 
 const loginScreen = document.getElementById('loginScreen');
 const loginForm = document.getElementById('loginForm');
@@ -1584,6 +1619,7 @@ onAuthStateChanged(auth, user => {
     loginScreen.classList.add('hidden');
     appShell.classList.add('authenticated');
     userEmail.textContent = user.email || '';
+    safeLogActivity('admin_signed_in');
     updateDateNavigation();
     subscribeToUserProfiles();
     subscribeToAllNotes();
@@ -1609,6 +1645,7 @@ onAuthStateChanged(auth, user => {
     loginScreen.classList.add('hidden');
     appShell.classList.add('authenticated');
     userEmail.textContent = user.email || '';
+    safeLogActivity('admin_signed_in');
     updateDateNavigation();
     subscribeToScopedNotes(ownerIds);
   }).catch(error => {
@@ -1674,6 +1711,7 @@ copyBtn.addEventListener('click', async () => {
   }
   copyBtn.textContent = 'Copied';
   copyBtn.classList.add('copied');
+  if (note) safeLogActivity('admin_note_copied', noteLogPayload(note));
   setTimeout(() => {
     copyBtn.textContent = 'Copy note';
     copyBtn.classList.remove('copied');
@@ -1683,6 +1721,8 @@ copyBtn.addEventListener('click', async () => {
 sendEmrBtn.addEventListener('click', () => {
   clearTimeout(emrStatusTimer);
   emrStatus.classList.add('visible');
+  const note = selectedTimelineNote();
+  if (note) safeLogActivity('send_to_emr_clicked', noteLogPayload(note));
   emrStatusTimer = setTimeout(() => emrStatus.classList.remove('visible'), 1600);
 });
 
@@ -1706,6 +1746,7 @@ dischargeBtn.addEventListener('click', async () => {
       ? {dischargeDate:null, dischargedBy:null, dischargedAt:null, updatedAt:serverTimestamp()}
       : {dischargeDate:selectedDateString, dischargedBy:currentAdminUid || '', dischargedAt:serverTimestamp(), updatedAt:serverTimestamp()};
     await updateDoc(doc(db,note.path),changes);
+    safeLogActivity(wasDischarged ? 'ip_discharge_reverted' : 'ip_patient_discharged', noteLogPayload(note));
     render();
   }catch(error){
     console.error(error);
@@ -1803,6 +1844,7 @@ printBtn.addEventListener('click', () => {
 </html>`);
   printWindow.document.close();
   printWindow.focus();
+  if (note) safeLogActivity('admin_note_printed', noteLogPayload(note));
   setTimeout(() => {
     printWindow.print();
     printWindow.close();
@@ -1954,6 +1996,7 @@ rxPrintBtn.addEventListener('click', () => {
 </html>`);
   printWindow.document.close();
   printWindow.focus();
+  safeLogActivity('admin_prescription_printed', noteLogPayload(note));
   setTimeout(() => {
     printWindow.print();
     printWindow.close();
@@ -1970,9 +2013,11 @@ saveNoteBtn.addEventListener('click', async () => {
   saveNoteBtn.textContent = 'Saving...';
   try{
     if (selectedTimelineEntryId === 'all'){
+      const editedNotes = [];
       await Promise.all(allEditors.map(item => {
         const entryNote = noteForAdminAllEntryEditor(item);
         if (!entryNote) return Promise.resolve();
+        editedNotes.push(entryNote);
         const transcription = editorPlainText(item);
         const patientData = extractPatientFromNote(transcription, entryNote.data.patientData);
         entryNote.data.transcription = transcription;
@@ -1984,6 +2029,7 @@ saveNoteBtn.addEventListener('click', async () => {
           adminEditedBy:currentAdminUid || ''
         });
       }));
+      editedNotes.forEach(entryNote => safeLogActivity('admin_note_edited', noteLogPayload(entryNote)));
     }else{
       const transcription = editorPlainText(editor);
       const patientData = extractPatientFromNote(transcription, note.data.patientData);
@@ -1995,6 +2041,7 @@ saveNoteBtn.addEventListener('click', async () => {
         adminEditedAt:serverTimestamp(),
         adminEditedBy:currentAdminUid || ''
       });
+      safeLogActivity('admin_note_edited', noteLogPayload(note));
     }
     renderEntries();
     renderAdminTimelineMenu();

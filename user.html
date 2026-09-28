@@ -2739,6 +2739,41 @@ const authPersistenceReady = setPersistence(auth, browserLocalPersistence).catch
 });
 const db = getFirestore(firebaseApp);
 
+function cleanLogValue(value, maxLength = 160){
+  return String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+}
+
+function noteLogPayload(record = {}){
+  const patient = record.patientData || {};
+  return {
+    noteId:cleanLogValue(record.firestoreId || '', 120),
+    noteOwnerUid:cleanLogValue(noteOwnerUid(record) || '', 120),
+    noteType:cleanLogValue(record.selectedMode || record.heading || '', 120),
+    patientName:cleanLogValue(patient.name || record.name || '', 160),
+    uhid:cleanLogValue(patient.uhid || record.uhid || '', 80),
+    visitDate:cleanLogValue(record.visitDate || '', 20),
+    visitType:cleanLogValue(noteVisitType(record) || '', 20)
+  };
+}
+
+function safeLogActivity(action, info = {}){
+  const user = auth.currentUser;
+  if (!user) return;
+  const payload = {
+    action:cleanLogValue(action, 80),
+    page:'user',
+    userId:user.uid,
+    email:cleanLogValue(user.email || '', 160),
+    createdAt:serverTimestamp()
+  };
+  const logFieldLimits = {noteId:120,noteOwnerUid:120,noteType:120,patientName:160,uhid:80,visitDate:20,visitType:20};
+  Object.entries(logFieldLimits).forEach(([key, maxLength]) => {
+    const value = cleanLogValue(info[key] || '', maxLength);
+    if (value) payload[key] = value;
+  });
+  addDoc(collection(db,'activityLogs'), payload).catch(error => console.warn('Activity log failed:', error));
+}
+
 const sampleRecords = [
   {
     name: "Soji George",
@@ -5011,6 +5046,7 @@ onAuthStateChanged(auth,user => {
     appShell.classList.add('authenticated');
     userEmail.textContent = '';
     homeModeActive = true;
+    safeLogActivity('user_signed_in');
     userProfileUnsubscribe = onSnapshot(doc(db,'users',user.uid), snapshot => {
       const profile = snapshot.data() || {};
       userEmail.textContent = displayCredentialName(profile.credentialName) || '';
@@ -7087,6 +7123,7 @@ async function stopAndAppendContinuation(){
           }
         );
         appendDocumentText(generated.text, continuationState.documentMode);
+        safeLogActivity('add_on_document_completed', noteLogPayload(targetRecord));
         setContinuationStatus(`${continuationState.documentMode} added. Review and save.`);
       }else{
         const targetRecord = continuationTargetRecord();
@@ -7098,6 +7135,7 @@ async function stopAndAppendContinuation(){
           }
         );
         appendContinuationText(addition);
+        safeLogActivity('add_on_completed', noteLogPayload(targetRecord));
         setContinuationStatus('Added to selected note. Review and save.');
       }
     }
@@ -7163,6 +7201,7 @@ async function finishNewVoiceDraft(audioBlob, apiKey, onRetry){
     updatedAt:serverTimestamp()
   }).then(() => {
     clearRecordDirty(draft);
+    safeLogActivity('voice_note_generated', noteLogPayload(draft));
   }).catch(error => {
     console.error('Generated continuation note save failed:', error);
     const visibleDraft = records[activeIndex] || draft;
@@ -7445,6 +7484,7 @@ async function generateDischargeSummaryFromCurrentVisitNote(){
   try{
     await setDoc(newDraftRef,{...draftData,createdAt:serverTimestamp()},{merge:true});
     subscribeToSelectedDate();
+    safeLogActivity('discharge_summary_generated', noteLogPayload({...draftData, firestoreId:newDraftRef.id, ownerUid:currentUser.uid}));
     showToast('Discharge summary generated.');
   }catch(error){
     console.error('Local discharge summary save failed:', error);
@@ -8633,6 +8673,7 @@ async function createVoiceDraft(mode = null){
           renderContinuationDock();
         }
       });
+      safeLogActivity('voice_draft_created', noteLogPayload({...draftData, firestoreId:newDraftRef.id, ownerUid:currentUser.uid}));
     }catch(error){
       console.error('Voice draft creation failed:', error);
       continuationState.processing = false;
@@ -8688,6 +8729,7 @@ async function createManualDraft(){
       console.error('Manual draft save failed:', error);
       showToast('Manual note opened, but saving is pending.');
     });
+    safeLogActivity('manual_draft_created', noteLogPayload({...draftData, firestoreId:newDraftRef.id, ownerUid:currentUser.uid}));
   });
 }
 
@@ -9070,6 +9112,7 @@ copyBtn.addEventListener('click', async () => {
   }catch(e){}
   copyBtn.textContent = 'Copied';
   copyBtn.classList.add('copied');
+  safeLogActivity('note_copied', noteLogPayload(activeRecord));
   setTimeout(() => {
     copyBtn.textContent = 'Copy';
     copyBtn.classList.remove('copied');
@@ -9091,6 +9134,7 @@ printBtn.addEventListener('click', () => {
   printWindow.document.write(visitNotePrintHtml(note, 'WOYZ Notes Print'));
   printWindow.document.close();
   printWindow.focus();
+  safeLogActivity('note_printed', noteLogPayload(activeRecord));
   setTimeout(() => {
     printWindow.print();
     printWindow.close();
@@ -9635,6 +9679,7 @@ deleteBtn.addEventListener('click', async () => {
       deletedBy:currentUser.uid,
       updatedAt:serverTimestamp()
     });
+    safeLogActivity('note_moved_to_trash', noteLogPayload(draft));
     records = records.filter(record => !(record.firestoreId === draft.firestoreId && noteOwnerUid(record) === noteOwnerUid(draft)));
     allRecords = allRecords.filter(record => !(record.firestoreId === draft.firestoreId && noteOwnerUid(record) === noteOwnerUid(draft)));
     activeIndex = null;

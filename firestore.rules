@@ -102,6 +102,42 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /activityLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          "action",
+          "page",
+          "userId",
+          "email",
+          "noteId",
+          "noteOwnerUid",
+          "noteType",
+          "patientName",
+          "uhid",
+          "visitDate",
+          "visitType",
+          "createdAt"
+        ])
+        && request.resource.data.action is string
+        && request.resource.data.action.size() > 0
+        && request.resource.data.action.size() <= 80
+        && request.resource.data.page is string
+        && request.resource.data.page.size() <= 40
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 160
+        && request.resource.data.createdAt is timestamp
+        && (!("noteId" in request.resource.data) || (request.resource.data.noteId is string && request.resource.data.noteId.size() <= 120))
+        && (!("noteOwnerUid" in request.resource.data) || (request.resource.data.noteOwnerUid is string && request.resource.data.noteOwnerUid.size() <= 120))
+        && (!("noteType" in request.resource.data) || (request.resource.data.noteType is string && request.resource.data.noteType.size() <= 120))
+        && (!("patientName" in request.resource.data) || (request.resource.data.patientName is string && request.resource.data.patientName.size() <= 160))
+        && (!("uhid" in request.resource.data) || (request.resource.data.uhid is string && request.resource.data.uhid.size() <= 80))
+        && (!("visitDate" in request.resource.data) || (request.resource.data.visitDate is string && request.resource.data.visitDate.size() <= 20))
+        && (!("visitType" in request.resource.data) || (request.resource.data.visitType is string && request.resource.data.visitType.size() <= 20));
+      allow update, delete: if false;
+    }
+
     match /{path=**}/notes/{noteId} {
       allow read: if isAdmin();
     }

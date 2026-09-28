@@ -128,6 +128,28 @@ const authPersistenceReady = setPersistence(auth, browserLocalPersistence).catch
 });
 const db = getFirestore(app);
 
+function cleanLogValue(value, maxLength = 160){
+  return String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+}
+
+function safeLogActivity(action, info = {}){
+  const user = auth.currentUser;
+  if (!user) return;
+  const payload = {
+    action:cleanLogValue(action, 80),
+    page:'master-admin',
+    userId:user.uid,
+    email:cleanLogValue(user.email || '', 160),
+    createdAt:serverTimestamp()
+  };
+  const logFieldLimits = {noteId:120,noteOwnerUid:120,noteType:120,patientName:160,uhid:80,visitDate:20,visitType:20};
+  Object.entries(logFieldLimits).forEach(([key, maxLength]) => {
+    const value = cleanLogValue(info[key] || '', maxLength);
+    if (value) payload[key] = value;
+  });
+  addDoc(collection(db,'activityLogs'), payload).catch(error => console.warn('Activity log failed:', error));
+}
+
 const loginScreen = document.getElementById('loginScreen');
 const loginForm = document.getElementById('loginForm');
 const loginEmail = document.getElementById('loginEmail');
@@ -318,6 +340,7 @@ onAuthStateChanged(auth, user => {
   loginScreen.classList.add('hidden');
   appShell.classList.add('authenticated');
   userEmail.textContent = user.email || '';
+  safeLogActivity('master_admin_signed_in');
   subscribe();
 });
 
@@ -337,7 +360,7 @@ groupForm.addEventListener('submit', async event => {
   saveGroupBtn.disabled = true;
   saveGroupBtn.textContent = 'Saving...';
   try{
-    await addDoc(collection(db,'groups'),{
+    const groupRef = await addDoc(collection(db,'groups'),{
       name,
       memberUids:selectedUids,
       adminEmails:admins,
@@ -345,6 +368,12 @@ groupForm.addEventListener('submit', async event => {
       createdAt:serverTimestamp(),
       mappingUpdatedAt:serverTimestamp(),
       mappingUpdatedBy:MASTER_ADMIN_UID
+    });
+    safeLogActivity('group_created', {
+      noteId:groupRef.id,
+      noteType:name,
+      patientName:`${selectedUids.length} users`,
+      uhid:`${admins.length} admins`
     });
     groupName.value = '';
     adminEmails.value = '';
@@ -387,6 +416,10 @@ groupsList.addEventListener('click', async event => {
   button.disabled = true;
   try{
     await deleteDoc(doc(db,'groups',groupId));
+    safeLogActivity('group_deleted', {
+      noteId:groupId,
+      noteType:group?.name || 'Group'
+    });
   }catch(error){
     console.error(error);
     button.disabled = false;
