@@ -6,83 +6,149 @@
 <title>WOYZ Activity Log</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Inter:wght@500;600;700;800&family=IBM+Plex+Mono:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Inter:wght@500;600;700;800;900&family=IBM+Plex+Mono:wght@600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#1E2924;
-    --muted:#707B75;
+    --ink:#14181F;
+    --muted:#747B87;
+    --soft:#A0A7B2;
     --teal:#1F6B59;
     --teal-dark:#155446;
-    --teal-wash:#EAF5F1;
-    --red:#E44734;
-    --red-wash:#FDEBE7;
-    --border:#D9E4DF;
-    --paper:#F6F8F6;
-    --shadow:0 24px 60px -38px rgba(20,35,29,.5);
+    --teal-wash:#E9F4EF;
+    --blue:#4678F5;
+    --amber:#C77710;
+    --amber-wash:#FFF7E7;
+    --red:#EC4A55;
+    --red-wash:#FDEBEC;
+    --border:#E4E0D8;
+    --paper:#F7F5F0;
+    --card:#FFFEFC;
+    --shadow:0 22px 50px -42px rgba(21,28,38,.45);
   }
   *{ box-sizing:border-box; }
-  body{
-    margin:0;
-    min-height:100vh;
-    color:var(--ink);
-    background:var(--paper);
-    font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  }
+  body{ margin:0; min-height:100vh; color:var(--ink); background:var(--paper); font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
   button,input{ font:inherit; }
-  .login-screen{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:28px; background:linear-gradient(145deg,#F4F5F3,#EAF2EF); }
+  button{ cursor:pointer; }
+  .login-screen{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:28px; background:linear-gradient(145deg,#F7F5F0,#EAF2EF); }
   .login-screen.hidden{ display:none; }
   .login-card{ width:min(420px,100%); background:#fff; border:1px solid var(--border); border-radius:22px; padding:34px; box-shadow:var(--shadow); }
-  .brand{ display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:27px; font-size:27px; font-weight:800; }
+  .brand{ display:flex; align-items:center; gap:10px; font-size:27px; font-weight:900; }
   .brand-pill{ display:inline-flex; align-items:center; gap:9px; padding:8px 16px 8px 10px; border:4px solid #F45155; border-radius:999px; background:#17171D; color:#fff; letter-spacing:1px; }
   .brand-dot{ width:27px; height:27px; border-radius:50%; background:#F45155; border:7px solid #452126; }
-  h1{ margin:0; font:700 28px/1.1 'Fraunces',serif; }
-  .sub{ margin:8px 0 23px; color:var(--muted); font-size:13px; }
+  h1{ margin:0; font:900 54px/1 'Inter',system-ui,sans-serif; letter-spacing:-.04em; }
+  .login-card h1{ font:700 28px/1.1 'Fraunces',serif; letter-spacing:0; margin-top:26px; }
+  .sub{ margin:9px 0 0; color:var(--muted); font-size:16px; font-weight:600; }
+  .live-dot{ display:inline-flex; align-items:center; gap:5px; color:#279A65; font-weight:900; }
+  .live-dot::before{ content:''; width:9px; height:9px; border-radius:50%; background:#33B374; box-shadow:0 0 0 4px rgba(51,179,116,.14); }
   label{ display:block; margin:14px 0 7px; font-size:12px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
   input{ width:100%; height:44px; border:1.5px solid var(--border); border-radius:11px; padding:0 13px; outline:none; background:#fff; color:var(--ink); }
-  input:focus{ border-color:#8FB9AC; box-shadow:0 0 0 3px rgba(143,185,172,.2); }
-  .btn{ min-height:44px; border:1.5px solid var(--border); border-radius:11px; background:#fff; color:var(--ink); padding:0 18px; font-weight:800; cursor:pointer; }
+  input:focus{ border-color:#AEBBB4; box-shadow:0 0 0 3px rgba(31,107,89,.13); }
+  .btn{ min-height:48px; border:1.5px solid var(--border); border-radius:14px; background:#fff; color:var(--ink); padding:0 20px; font-weight:900; }
   .btn.primary{ width:100%; margin-top:22px; background:var(--teal); border-color:var(--teal); color:#fff; }
-  .btn.primary:hover{ background:var(--teal-dark); }
-  .btn.ghost:hover{ background:var(--teal-wash); border-color:#BBD2CA; color:var(--teal-dark); }
+  .btn.dark{ background:#12161E; border-color:#12161E; color:#fff; }
+  .btn.ghost:hover{ background:var(--teal-wash); border-color:#BFD0C8; color:var(--teal-dark); }
   .error{ min-height:18px; margin-top:12px; color:var(--red); font-size:12px; }
   .app{ display:none; min-height:100vh; }
-  .app.authenticated{ display:grid; grid-template-columns:340px minmax(0,1fr); }
-  .sidebar{ background:#fff; border-right:1px solid var(--border); padding:26px 22px; display:flex; flex-direction:column; gap:20px; min-height:100vh; }
-  .sidebar .brand{ justify-content:flex-start; margin-bottom:10px; }
-  .sidebar .brand-pill{ font-size:24px; }
-  .search{ display:grid; gap:12px; }
-  .meta{ color:var(--muted); font:700 12px 'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.04em; }
-  .content{ min-width:0; display:flex; flex-direction:column; min-height:100vh; }
-  .topbar{ min-height:96px; background:#fff; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:18px; padding:18px 28px; position:sticky; top:0; z-index:4; }
-  .topbar-main{ min-width:220px; }
-  .topbar-actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+  .app.authenticated{ display:grid; grid-template-columns:300px minmax(0,1fr); }
+  .sidebar{ min-height:100vh; background:#fff; border-right:1px solid var(--border); padding:28px 24px; display:flex; flex-direction:column; gap:28px; position:sticky; top:0; }
+  .sidebar .brand-pill{ font-size:22px; padding:7px 15px 7px 9px; }
+  .search-wrap{ position:relative; }
+  .search-wrap::before{ content:''; position:absolute; left:18px; top:50%; width:13px; height:13px; border:2px solid var(--soft); border-radius:50%; transform:translateY(-50%); }
+  .search-wrap::after{ content:''; position:absolute; left:31px; top:29px; width:8px; height:2px; border-radius:999px; background:var(--soft); transform:rotate(45deg); }
+  .search-wrap input{ height:48px; border-radius:15px; padding-left:45px; padding-right:58px; font-size:16px; }
+  .shortcut{ position:absolute; right:14px; top:50%; transform:translateY(-50%); min-width:31px; height:24px; border:1px solid var(--border); border-radius:8px; display:grid; place-items:center; color:var(--soft); font:800 11px 'IBM Plex Mono',monospace; }
+  .side-section{ display:grid; gap:11px; }
+  .side-title{ color:#9299A4; font:900 13px 'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.16em; margin-bottom:5px; }
+  .stream-btn,.quick-btn{ width:100%; min-height:44px; border:0; border-radius:11px; background:transparent; display:grid; grid-template-columns:20px 1fr auto; align-items:center; gap:8px; padding:0 14px; text-align:left; color:#303743; font-weight:900; font-size:18px; }
+  .stream-btn:hover,.quick-btn:hover{ background:#F4F2EE; }
+  .stream-btn.active{ background:var(--teal); color:#fff; }
+  .stream-dot{ width:9px; height:9px; border-radius:50%; background:#14181F; }
+  .stream-btn[data-tab="users"] .stream-dot{ background:var(--blue); }
+  .stream-btn[data-tab="notes"] .stream-dot{ background:var(--amber); }
+  .stream-btn[data-tab="admin"] .stream-dot{ background:#80D4AC; }
+  .stream-btn[data-tab="master"] .stream-dot{ background:var(--red); }
+  .pill-count{ min-width:30px; height:22px; border-radius:999px; display:grid; place-items:center; background:#ECEAE4; color:#7B817D; font-size:13px; font-weight:900; }
+  .stream-btn.active .pill-count{ background:rgba(255,255,255,.2); color:#fff; }
+  .quick-btn{ grid-template-columns:1fr auto; min-height:42px; padding:0 14px 0 16px; }
+  .quick-btn.active{ background:#151920; color:#fff; }
+  .sidebar-foot{ margin-top:auto; border-top:1px solid var(--border); padding-top:20px; display:flex; align-items:center; gap:12px; }
+  .avatar{ width:43px; height:43px; border-radius:50%; display:grid; place-items:center; background:var(--teal); color:#fff; font-weight:900; flex:0 0 auto; }
+  .user-lines{ min-width:0; }
+  .user-lines strong{ display:block; font-size:17px; }
+  .user-lines span{ display:block; color:var(--muted); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:130px; }
+  .signout-link{ margin-left:auto; border:0; background:transparent; color:var(--red); font-weight:900; }
+  .content{ min-width:0; padding:34px 40px 40px; }
+  .hero{ display:grid; grid-template-columns:minmax(260px,1fr) auto; gap:18px; align-items:start; margin-bottom:24px; }
+  .toolbar{ display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:10px; padding-top:22px; }
+  .range-tabs{ min-height:48px; border:1px solid var(--border); border-radius:14px; background:#fff; display:flex; align-items:center; padding:3px; }
+  .range-btn{ height:40px; border:0; border-radius:11px; padding:0 18px; background:transparent; color:#636B76; font-weight:900; }
+  .range-btn.active{ background:#14181F; color:#fff; }
   .date-nav{ display:flex; align-items:center; gap:8px; }
-  .date-step{ width:48px; height:48px; border:1.5px solid var(--border); border-radius:13px; background:#F3F7F5; color:#16263A; font-size:31px; line-height:1; font-weight:800; cursor:pointer; display:grid; place-items:center; }
-  .date-step:hover{ background:var(--teal-wash); border-color:#BBD2CA; }
+  .date-step{ width:48px; height:48px; border:1.5px solid var(--border); border-radius:13px; background:#fff; color:#16263A; font-size:24px; line-height:1; font-weight:900; display:grid; place-items:center; }
+  .date-step:hover{ background:#F0EEE8; }
   .date-input-wrap{ position:relative; display:block; }
-  .date-input{ width:178px; height:48px; border-radius:13px; padding:0 42px 0 22px; font-size:18px; font-weight:800; letter-spacing:.01em; color:#182533; }
-  .date-input::-webkit-calendar-picker-indicator{ opacity:1; cursor:pointer; position:absolute; right:14px; }
-  .activity-tabs{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; }
-  .activity-tab{ min-height:40px; border:1.5px solid var(--border); border-radius:999px; background:#fff; color:#52655D; padding:0 15px; font-size:13px; font-weight:800; cursor:pointer; }
-  .activity-tab.active{ background:var(--teal); border-color:var(--teal); color:#fff; box-shadow:0 10px 22px -18px rgba(20,35,29,.65); }
-  .activity-tab:not(.active):hover{ background:var(--teal-wash); border-color:#BBD2CA; color:var(--teal-dark); }
-  .log-list{ padding:28px; display:grid; gap:12px; }
-  .log-item{ background:#fff; border:1px solid var(--border); border-radius:12px; padding:16px 18px; box-shadow:0 14px 34px -32px rgba(20,35,29,.45); display:grid; gap:8px; }
-  .log-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
-  .action{ font-size:16px; font-weight:800; }
-  .time{ color:var(--muted); font:700 12px 'IBM Plex Mono',monospace; white-space:nowrap; }
-  .details{ display:flex; gap:8px; flex-wrap:wrap; }
-  .chip{ min-height:25px; display:inline-flex; align-items:center; border-radius:999px; padding:0 9px; background:#F2F6F4; color:#496158; font-size:12px; font-weight:800; }
-  .chip.red{ background:var(--red-wash); color:var(--red); }
-  .empty{ margin:30px; padding:28px; background:#fff; border:1px dashed var(--border); border-radius:14px; color:var(--muted); font-weight:700; text-align:center; }
+  .date-label{ min-width:222px; height:48px; border:1.5px solid var(--border); border-radius:13px; background:#fff; display:flex; align-items:center; justify-content:center; gap:12px; padding:0 42px 0 20px; font-weight:900; }
+  .date-input{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+  .calendar-mark{ position:absolute; right:15px; top:50%; width:18px; height:17px; border:2px solid #111821; border-radius:4px; transform:translateY(-50%); pointer-events:none; }
+  .calendar-mark::before{ content:''; position:absolute; left:2px; right:2px; top:4px; height:2px; background:#111821; border-radius:999px; }
+  .summary-grid{ display:grid; grid-template-columns:repeat(4,minmax(160px,1fr)); gap:16px; margin-bottom:24px; }
+  .stat-card,.panel{ background:var(--card); border:1px solid var(--border); border-radius:18px; box-shadow:var(--shadow); }
+  .stat-card{ min-height:124px; padding:23px 24px; display:grid; gap:8px; }
+  .label{ color:#9299A4; font:900 14px 'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.14em; }
+  .stat-number{ font-size:42px; line-height:.95; font-weight:900; letter-spacing:-.04em; }
+  .stat-sub{ color:var(--muted); font-size:15px; font-weight:600; }
+  .hour-bars{ height:42px; display:flex; align-items:end; gap:7px; margin-top:16px; }
+  .hour-bar{ flex:1; min-width:13px; height:5px; border-radius:999px; background:#DFECE7; }
+  .hour-bar.strong{ background:var(--teal); }
+  .dashboard{ display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:20px; align-items:start; }
+  .timeline-panel{ min-height:660px; overflow:hidden; }
+  .panel-head{ min-height:58px; display:flex; align-items:center; justify-content:space-between; gap:14px; padding:0 24px; border-bottom:1px solid var(--border); }
+  .panel-title{ font-size:22px; font-weight:900; letter-spacing:-.02em; }
+  .panel-note{ color:#9299A4; font-weight:700; }
+  .timeline{ display:grid; }
+  .hour-group{ border-bottom:1px solid #ECE8E1; }
+  .hour-label{ min-height:36px; display:flex; align-items:center; gap:12px; background:#FBFAF7; border-bottom:1px solid #EEEAE3; padding:0 24px; color:#8A929D; font:900 13px 'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.08em; }
+  .event-row{ display:grid; grid-template-columns:104px 34px 1fr auto; gap:14px; align-items:center; min-height:78px; padding:12px 24px; position:relative; }
+  .event-row::before{ content:''; position:absolute; left:135px; top:0; bottom:0; width:2px; background:#EAE6DE; }
+  .event-time{ color:#27303C; font:900 15px 'IBM Plex Mono',monospace; white-space:nowrap; }
+  .node{ width:18px; height:18px; border-radius:50%; border:4px solid currentColor; background:#fff; color:var(--teal); z-index:1; box-shadow:0 0 0 4px #fff; }
+  .event-avatar{ width:42px; height:42px; border-radius:50%; display:grid; place-items:center; background:var(--teal); color:#fff; font-weight:900; }
+  .event-copy{ min-width:0; display:grid; grid-template-columns:42px minmax(0,1fr); gap:14px; align-items:center; }
+  .event-main{ min-width:0; }
+  .event-main strong{ font-size:18px; letter-spacing:-.01em; }
+  .event-main span{ color:#8B929D; font-weight:600; }
+  .event-meta{ margin-top:2px; color:#8B929D; font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .event-badge{ min-width:74px; min-height:32px; border-radius:10px; display:grid; place-items:center; padding:0 12px; background:#E7F3ED; color:var(--teal); font-weight:900; font-size:13px; text-transform:uppercase; }
+  .event-badge.master{ background:var(--red-wash); color:#CF3642; }
+  .event-badge.notes{ background:#FFF3DA; color:#A7680F; }
+  .event-badge.users{ background:#EAF0FF; color:#315FCC; }
+  .side-panels{ display:grid; gap:20px; }
+  .active-list{ display:grid; gap:15px; padding:22px 24px; }
+  .active-user{ display:grid; grid-template-columns:48px 1fr auto; align-items:center; gap:14px; }
+  .mini-bar{ height:7px; background:#ECE9E2; border-radius:999px; overflow:hidden; margin-top:8px; }
+  .mini-fill{ height:100%; width:0; border-radius:999px; background:var(--teal); }
+  .alert-card{ background:var(--amber-wash); border-color:#F1D38D; padding:22px 24px; color:#8B5A05; }
+  .alert-card strong{ display:block; font-size:18px; margin-bottom:8px; }
+  .alert-card p{ margin:0 0 14px; line-height:1.35; font-weight:600; }
+  .export-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:0 24px 22px; }
+  .empty{ margin:30px; padding:28px; background:#fff; border:1px dashed var(--border); border-radius:14px; color:var(--muted); font-weight:800; text-align:center; }
+  @media (max-width:1200px){
+    .app.authenticated{ grid-template-columns:270px minmax(0,1fr); }
+    .summary-grid{ grid-template-columns:repeat(2,minmax(160px,1fr)); }
+    .dashboard{ grid-template-columns:1fr; }
+    .side-panels{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+  }
   @media (max-width:850px){
     .app.authenticated{ grid-template-columns:1fr; }
-    .sidebar{ min-height:auto; border-right:0; border-bottom:1px solid var(--border); }
-    .topbar{ position:static; align-items:flex-start; flex-direction:column; }
-    .activity-tabs{ justify-content:flex-start; }
-    .topbar-actions{ justify-content:flex-start; }
-    .log-list{ padding:18px; }
-    .log-head{ flex-direction:column; gap:6px; }
+    .sidebar{ position:static; min-height:auto; }
+    .content{ padding:24px 18px; }
+    .hero{ grid-template-columns:1fr; }
+    h1{ font-size:40px; }
+    .toolbar{ justify-content:flex-start; padding-top:0; }
+    .summary-grid,.side-panels{ grid-template-columns:1fr; }
+    .event-row{ grid-template-columns:76px 28px 1fr; }
+    .event-row::before{ left:111px; }
+    .event-badge{ grid-column:3; justify-self:start; }
   }
 </style>
 </head>
@@ -104,38 +170,82 @@
 <div class="app" id="appShell">
   <aside class="sidebar">
     <div class="brand"><span class="brand-pill"><span class="brand-dot"></span>WOYZ</span><span>Log</span></div>
-    <div class="search">
-      <input id="searchInput" type="search" autocomplete="off" placeholder="Search user, action, patient, UHID">
-      <button class="btn ghost" id="clearBtn" type="button">Clear search</button>
-      <div class="meta" id="logCount">0 activities</div>
+    <div class="search-wrap">
+      <input id="searchInput" type="search" autocomplete="off" placeholder="Search user, UHID...">
+      <span class="shortcut">/</span>
+    </div>
+    <div class="side-section">
+      <div class="side-title">Streams</div>
+      <button class="stream-btn active" type="button" data-tab="all"><span class="stream-dot"></span><span>All activity</span><span class="pill-count" id="countAll">0</span></button>
+      <button class="stream-btn" type="button" data-tab="users"><span class="stream-dot"></span><span>Users</span><span class="pill-count" id="countUsers">0</span></button>
+      <button class="stream-btn" type="button" data-tab="notes"><span class="stream-dot"></span><span>Notes</span><span class="pill-count" id="countNotes">0</span></button>
+      <button class="stream-btn" type="button" data-tab="admin"><span class="stream-dot"></span><span>Admin</span><span class="pill-count" id="countAdmin">0</span></button>
+      <button class="stream-btn" type="button" data-tab="master"><span class="stream-dot"></span><span>Master</span><span class="pill-count" id="countMaster">0</span></button>
+    </div>
+    <div class="side-section">
+      <div class="side-title">Quick filters</div>
+      <button class="quick-btn" type="button" data-quick="signins"><span>Sign-ins only</span><span class="pill-count" id="countSignins">0</span></button>
+      <button class="quick-btn" type="button" data-quick="failed"><span>Failed attempts</span><span class="pill-count" id="countFailed">0</span></button>
+      <button class="quick-btn" type="button" data-quick="last60"><span>Last 60 minutes</span><span class="pill-count" id="countLast60">0</span></button>
+    </div>
+    <div class="sidebar-foot">
+      <div class="avatar" id="footerAvatar">DG</div>
+      <div class="user-lines"><strong>Dr. Gigy</strong><span id="userEmail"></span></div>
+      <button class="signout-link" id="signoutBtn" type="button">Sign out</button>
     </div>
   </aside>
   <main class="content">
-    <header class="topbar">
-      <div class="topbar-main">
+    <section class="hero">
+      <div>
         <h1>Activity log</h1>
-        <p class="sub" id="userEmail"></p>
+        <p class="sub">Aster ED / Admin stream <span class="live-dot">Live</span></p>
       </div>
-      <div class="activity-tabs" id="activityTabs" aria-label="Activity type filters">
-        <button class="activity-tab active" type="button" data-tab="all">All</button>
-        <button class="activity-tab" type="button" data-tab="users">Users</button>
-        <button class="activity-tab" type="button" data-tab="notes">Notes</button>
-        <button class="activity-tab" type="button" data-tab="admin">Admin</button>
-        <button class="activity-tab" type="button" data-tab="master">Master</button>
-      </div>
-      <div class="topbar-actions">
+      <div class="toolbar">
+        <div class="range-tabs" aria-label="Date range">
+          <button class="range-btn" type="button" data-range="yesterday">Yesterday</button>
+          <button class="range-btn active" type="button" data-range="today">Today</button>
+          <button class="range-btn" type="button" data-range="7days">7 days</button>
+        </div>
         <div class="date-nav" aria-label="Activity log date">
           <button class="date-step" id="previousDateBtn" type="button" aria-label="Previous date">&lsaquo;</button>
           <span class="date-input-wrap">
+            <span class="date-label" id="dateLabel">Today</span>
+            <span class="calendar-mark"></span>
             <input class="date-input" id="dateInput" type="date" aria-label="Filter by date">
           </span>
           <button class="date-step" id="nextDateBtn" type="button" aria-label="Next date">&rsaquo;</button>
         </div>
-        <button class="btn ghost" id="refreshBtn" type="button">Refresh</button>
-        <button class="btn ghost" id="signoutBtn" type="button">Sign out</button>
+        <button class="btn dark" id="refreshBtn" type="button">Refresh</button>
       </div>
-    </header>
-    <section class="log-list" id="logList"></section>
+    </section>
+
+    <section class="summary-grid" aria-label="Activity summary">
+      <article class="stat-card"><div class="label">Events today</div><div class="stat-number" id="eventsToday">0</div><div class="stat-sub" id="eventsSub">All in Admin stream</div></article>
+      <article class="stat-card"><div class="label">Unique users</div><div class="stat-number" id="uniqueUsers">0</div><div class="stat-sub" id="uniqueSub">No users yet</div></article>
+      <article class="stat-card"><div class="label">Last activity</div><div class="stat-number" id="lastActivity">--</div><div class="stat-sub" id="lastActivitySub">No activity</div></article>
+      <article class="stat-card"><div class="label">By hour</div><div class="hour-bars" id="hourBars"></div></article>
+    </section>
+
+    <section class="dashboard">
+      <article class="panel timeline-panel">
+        <div class="panel-head"><div class="panel-title">Timeline</div><div class="panel-note">Newest first / duplicates grouped</div></div>
+        <div class="timeline" id="logList"></div>
+      </article>
+      <aside class="side-panels">
+        <article class="panel">
+          <div class="panel-head"><div class="label">Who's active</div></div>
+          <div class="active-list" id="activeUsers"></div>
+        </article>
+        <article class="panel alert-card" id="alertCard"></article>
+        <article class="panel">
+          <div class="panel-head"><div class="label">Export</div></div>
+          <div class="export-grid">
+            <button class="btn ghost" id="csvBtn" type="button">CSV</button>
+            <button class="btn ghost" id="pdfBtn" type="button">PDF</button>
+          </div>
+        </article>
+      </aside>
+    </section>
   </main>
 </div>
 
@@ -161,53 +271,56 @@ const loginSubmit = document.getElementById('loginSubmit');
 const loginError = document.getElementById('loginError');
 const appShell = document.getElementById('appShell');
 const userEmail = document.getElementById('userEmail');
+const footerAvatar = document.getElementById('footerAvatar');
 const searchInput = document.getElementById('searchInput');
 const dateInput = document.getElementById('dateInput');
+const dateLabel = document.getElementById('dateLabel');
 const previousDateBtn = document.getElementById('previousDateBtn');
 const nextDateBtn = document.getElementById('nextDateBtn');
-const activityTabs = document.getElementById('activityTabs');
-const clearBtn = document.getElementById('clearBtn');
 const refreshBtn = document.getElementById('refreshBtn');
 const signoutBtn = document.getElementById('signoutBtn');
-const logCount = document.getElementById('logCount');
 const logList = document.getElementById('logList');
+const activeUsers = document.getElementById('activeUsers');
+const alertCard = document.getElementById('alertCard');
+const hourBars = document.getElementById('hourBars');
+const csvBtn = document.getElementById('csvBtn');
+const pdfBtn = document.getElementById('pdfBtn');
+const streamButtons = Array.from(document.querySelectorAll('.stream-btn'));
+const quickButtons = Array.from(document.querySelectorAll('.quick-btn'));
+const rangeButtons = Array.from(document.querySelectorAll('.range-btn'));
+const countEls = {
+  all:document.getElementById('countAll'),
+  users:document.getElementById('countUsers'),
+  notes:document.getElementById('countNotes'),
+  admin:document.getElementById('countAdmin'),
+  master:document.getElementById('countMaster'),
+  signins:document.getElementById('countSignins'),
+  failed:document.getElementById('countFailed'),
+  last60:document.getElementById('countLast60')
+};
+const statEls = {
+  eventsToday:document.getElementById('eventsToday'),
+  eventsSub:document.getElementById('eventsSub'),
+  uniqueUsers:document.getElementById('uniqueUsers'),
+  uniqueSub:document.getElementById('uniqueSub'),
+  lastActivity:document.getElementById('lastActivity'),
+  lastActivitySub:document.getElementById('lastActivitySub')
+};
 
 let unsubscribeLogs = null;
 let logs = [];
 let searchTerm = '';
 let selectedDate = dateInputValue(new Date());
+let selectedRange = 'today';
 let selectedActivityTab = 'all';
+let selectedQuickFilter = '';
 
 function escapeHtml(value){
   return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
 }
 
 function titleCaseAction(action){
-  return String(action || 'activity')
-    .replace(/[_-]+/g, ' ')
-    .replace(/\b\w/g, char => char.toUpperCase());
-}
-
-function timestampDate(value){
-  const date = value?.toDate?.() || null;
-  if (!date) return '';
-  return date.toLocaleString('en-IN', {
-    day:'2-digit',
-    month:'2-digit',
-    year:'numeric',
-    hour:'2-digit',
-    minute:'2-digit',
-    hour12:true
-  });
-}
-
-function dateKey(value){
-  const date = value?.toDate?.() || null;
-  if (!date) return '';
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return String(action || 'activity').replace(/[_-]+/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
 }
 
 function dateInputValue(date){
@@ -223,87 +336,254 @@ function dateFromInputValue(value){
   return new Date(parts[0], parts[1] - 1, parts[2]);
 }
 
-function syncDateInput(){
-  dateInput.value = selectedDate;
+function logDate(log){
+  return log.createdAt?.toDate?.() || null;
 }
 
-function moveSelectedDate(days){
-  const date = dateFromInputValue(selectedDate);
-  date.setDate(date.getDate() + days);
-  selectedDate = dateInputValue(date);
-  syncDateInput();
-  render();
+function dateKey(value){
+  const date = value?.toDate?.() || null;
+  return date ? dateInputValue(date) : '';
 }
 
-function chip(label, value, tone = ''){
-  const text = String(value || '').trim();
-  if (!text) return '';
-  return `<span class="chip ${tone}">${escapeHtml(label)}: ${escapeHtml(text)}</span>`;
+function prettyDate(value){
+  return dateFromInputValue(value).toLocaleDateString('en-IN', {weekday:'short', day:'2-digit', month:'short', year:'numeric'});
+}
+
+function timeText(date){
+  if (!date) return '--';
+  return date.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', hour12:true}).replace('am','AM').replace('pm','PM');
+}
+
+function hourKey(date){
+  if (!date) return '';
+  return date.toLocaleTimeString('en-IN', {hour:'numeric', hour12:true}).replace('am','AM').replace('pm','PM');
+}
+
+function initials(value){
+  const source = String(value || 'User').replace(/@.*/, '').replace(/[^a-z0-9 ]/gi, ' ').trim();
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (!parts.length) return 'U';
+  return parts.slice(0, 2).map(part => part[0]).join('').toUpperCase();
 }
 
 function logHaystack(log){
-  return [
-    log.action,
-    log.page,
-    log.email,
-    log.userId,
-    log.noteId,
-    log.noteOwnerUid,
-    log.noteType,
-    log.patientName,
-    log.uhid,
-    log.visitDate,
-    log.visitType
-  ].filter(Boolean).join(' ').toLowerCase();
+  return [log.action, log.page, log.email, log.userId, log.noteId, log.noteOwnerUid, log.noteType, log.patientName, log.uhid, log.visitDate, log.visitType].filter(Boolean).join(' ').toLowerCase();
 }
 
-function logMatchesActivityTab(log){
-  if (selectedActivityTab === 'all') return true;
+function categoryForLog(log){
   const action = String(log.action || '').toLowerCase();
   const page = String(log.page || '').toLowerCase();
-  if (selectedActivityTab === 'users') return page === 'user' || action.includes('signed_in') || action.includes('signed_out');
-  if (selectedActivityTab === 'notes') return /note|draft|add_on|addon|discharge|copied|printed|saved|deleted|template/.test(action);
-  if (selectedActivityTab === 'admin') return page === 'index' || action.startsWith('admin') || action.includes('emr') || action.includes('ip_');
-  if (selectedActivityTab === 'master') return page === 'master-admin' || page === 'master' || action.includes('master') || action.includes('mapped') || action.includes('group');
+  if (page === 'master-admin' || page === 'master' || action.includes('master') || action.includes('mapped') || action.includes('group')) return 'master';
+  if (page === 'index' || action.startsWith('admin') || action.includes('emr') || action.includes('ip_')) return 'admin';
+  if (/note|draft|add_on|addon|discharge|copied|printed|saved|deleted|template/.test(action)) return 'notes';
+  if (page === 'user' || action.includes('signed_in') || action.includes('signed_out')) return 'users';
+  return 'admin';
+}
+
+function logMatchesRange(log){
+  const date = logDate(log);
+  if (!date) return false;
+  if (selectedRange === '7days'){
+    const end = new Date(dateFromInputValue(selectedDate));
+    end.setHours(23, 59, 59, 999);
+    const start = new Date(end);
+    start.setDate(start.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+    return date >= start && date <= end;
+  }
+  return dateKey(log.createdAt) === selectedDate;
+}
+
+function logMatchesQuickFilter(log){
+  if (!selectedQuickFilter) return true;
+  const action = String(log.action || '').toLowerCase();
+  if (selectedQuickFilter === 'signins') return action.includes('signed_in') || action.includes('sign');
+  if (selectedQuickFilter === 'failed') return action.includes('failed') || action.includes('denied') || action.includes('error');
+  if (selectedQuickFilter === 'last60'){
+    const date = logDate(log);
+    return date && Date.now() - date.getTime() <= 60 * 60 * 1000;
+  }
   return true;
+}
+
+function baseDateLogs(){
+  return logs.filter(logMatchesRange);
 }
 
 function filteredLogs(){
   const term = searchTerm.trim().toLowerCase();
-  return logs.filter(log => {
-    if (selectedDate && dateKey(log.createdAt) !== selectedDate) return false;
-    if (!logMatchesActivityTab(log)) return false;
+  return baseDateLogs().filter(log => {
+    if (selectedActivityTab !== 'all' && categoryForLog(log) !== selectedActivityTab) return false;
+    if (!logMatchesQuickFilter(log)) return false;
     if (term && !logHaystack(log).includes(term)) return false;
     return true;
   });
 }
 
-function render(){
-  const visible = filteredLogs();
-  logCount.textContent = `${visible.length} ${visible.length === 1 ? 'activity' : 'activities'}`;
+function sameActionText(log){
+  const action = titleCaseAction(log.action);
+  if (String(log.action || '').toLowerCase().includes('signed_in')) return 'Signed in';
+  if (String(log.action || '').toLowerCase().includes('signed_out')) return 'Signed out';
+  return action;
+}
+
+function actionTarget(log){
+  if (log.patientName) return log.patientName;
+  return log.page ? `${log.page} console` : 'activity stream';
+}
+
+function updateDateControls(){
+  dateInput.value = selectedDate;
+  dateLabel.textContent = prettyDate(selectedDate);
+  rangeButtons.forEach(button => button.classList.toggle('active', button.dataset.range === selectedRange));
+}
+
+function setSelectedDate(value, range = 'today'){
+  selectedDate = value;
+  selectedRange = range;
+  updateDateControls();
+  render();
+}
+
+function moveSelectedDate(days){
+  const date = dateFromInputValue(selectedDate);
+  date.setDate(date.getDate() + days);
+  setSelectedDate(dateInputValue(date), selectedRange === '7days' ? '7days' : 'today');
+}
+
+function updateCounts(dateLogs){
+  const counts = {all:dateLogs.length, users:0, notes:0, admin:0, master:0, signins:0, failed:0, last60:0};
+  dateLogs.forEach(log => {
+    counts[categoryForLog(log)] += 1;
+    const action = String(log.action || '').toLowerCase();
+    if (action.includes('signed_in') || action.includes('sign')) counts.signins += 1;
+    if (action.includes('failed') || action.includes('denied') || action.includes('error')) counts.failed += 1;
+    const date = logDate(log);
+    if (date && Date.now() - date.getTime() <= 60 * 60 * 1000) counts.last60 += 1;
+  });
+  Object.entries(countEls).forEach(([key, el]) => {
+    el.textContent = String(counts[key] || 0);
+  });
+}
+
+function updateStats(visible, dateLogs){
+  const userMap = new Map();
+  dateLogs.forEach(log => userMap.set(log.email || log.userId || 'Unknown user', true));
+  const last = visible[0] || dateLogs[0];
+  const lastDate = last ? logDate(last) : null;
+  statEls.eventsToday.textContent = String(visible.length);
+  statEls.eventsSub.textContent = selectedActivityTab === 'all' ? 'All in Admin stream' : `${titleCaseAction(selectedActivityTab)} stream`;
+  statEls.uniqueUsers.textContent = String(userMap.size);
+  statEls.uniqueSub.textContent = Array.from(userMap.keys()).slice(0, 2).map(value => value.replace(/@.*/, '')).join(' / ') || 'No users yet';
+  statEls.lastActivity.textContent = lastDate ? timeText(lastDate).replace(/\s/g, ' ') : '--';
+  statEls.lastActivitySub.textContent = last ? `${sameActionText(last)} / ${last.page || 'log'}` : 'No activity';
+}
+
+function updateHourBars(dateLogs){
+  const counts = Array(24).fill(0);
+  dateLogs.forEach(log => {
+    const date = logDate(log);
+    if (date) counts[date.getHours()] += 1;
+  });
+  const max = Math.max(...counts, 1);
+  hourBars.innerHTML = counts.map(count => {
+    const height = Math.max(5, Math.round((count / max) * 38));
+    return `<span class="hour-bar ${count ? 'strong' : ''}" style="height:${height}px"></span>`;
+  }).join('');
+}
+
+function renderTimeline(visible){
   if (!visible.length){
     logList.innerHTML = '<div class="empty">No activities found.</div>';
     return;
   }
-  logList.innerHTML = visible.map(log => `
-    <article class="log-item">
-      <div class="log-head">
-        <div class="action">${escapeHtml(titleCaseAction(log.action))}</div>
-        <div class="time">${escapeHtml(timestampDate(log.createdAt) || 'Pending time')}</div>
-      </div>
-      <div class="details">
-        ${chip('Page', log.page)}
-        ${chip('User', log.email || log.userId)}
-        ${chip('Patient', log.patientName)}
-        ${chip('UHID', log.uhid)}
-        ${chip('Type', log.noteType)}
-        ${chip('Visit date', log.visitDate)}
-        ${chip('Visit type', log.visitType)}
-        ${chip('Owner', log.noteOwnerUid)}
-        ${chip('Note', log.noteId)}
-      </div>
-    </article>
+  const groups = new Map();
+  visible.forEach(log => {
+    const key = hourKey(logDate(log));
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(log);
+  });
+  logList.innerHTML = Array.from(groups.entries()).map(([hour, group]) => `
+    <section class="hour-group">
+      <div class="hour-label">${escapeHtml(hour)} - ${group.length} ${group.length === 1 ? 'event' : 'events'}</div>
+      ${group.map(log => {
+        const category = categoryForLog(log);
+        const date = logDate(log);
+        const user = log.email || log.userId || 'Unknown user';
+        return `
+          <article class="event-row">
+            <div class="event-time">${escapeHtml(timeText(date))}</div>
+            <div class="node"></div>
+            <div class="event-copy">
+              <div class="event-avatar">${escapeHtml(initials(user))}</div>
+              <div class="event-main">
+                <strong>${escapeHtml(sameActionText(log))}</strong>
+                <span> to ${escapeHtml(actionTarget(log))}</span>
+                <div class="event-meta">${escapeHtml(user)} / page: ${escapeHtml(log.page || 'unknown')}${log.uhid ? ` / UHID: ${escapeHtml(log.uhid)}` : ''}</div>
+              </div>
+            </div>
+            <div class="event-badge ${category}">${escapeHtml(category)}</div>
+          </article>
+        `;
+      }).join('')}
+    </section>
   `).join('');
+}
+
+function renderActiveUsers(dateLogs){
+  const users = new Map();
+  dateLogs.forEach(log => {
+    const key = log.email || log.userId || 'Unknown user';
+    const date = logDate(log);
+    const item = users.get(key) || {key, count:0, last:null};
+    item.count += 1;
+    if (date && (!item.last || date > item.last)) item.last = date;
+    users.set(key, item);
+  });
+  const sorted = Array.from(users.values()).sort((a, b) => b.count - a.count).slice(0, 4);
+  if (!sorted.length){
+    activeUsers.innerHTML = '<div class="stat-sub">No active users for this date.</div>';
+    return;
+  }
+  const max = Math.max(...sorted.map(user => user.count), 1);
+  activeUsers.innerHTML = sorted.map(user => `
+    <div class="active-user">
+      <div class="avatar">${escapeHtml(initials(user.key))}</div>
+      <div class="user-lines">
+        <strong>${escapeHtml(user.key.replace(/@.*/, '') || 'User')}</strong>
+        <span>Last seen ${escapeHtml(user.last ? timeText(user.last) : '--')}</span>
+        <div class="mini-bar"><div class="mini-fill" style="width:${Math.max(12, Math.round(user.count / max * 100))}%"></div></div>
+      </div>
+      <strong>${user.count}</strong>
+    </div>
+  `).join('');
+}
+
+function renderAlert(dateLogs){
+  const signIns = dateLogs.filter(log => String(log.action || '').toLowerCase().includes('signed_in'));
+  const userCounts = new Map();
+  signIns.forEach(log => {
+    const key = log.email || log.userId || 'Unknown user';
+    userCounts.set(key, (userCounts.get(key) || 0) + 1);
+  });
+  const repeated = Array.from(userCounts.entries()).sort((a, b) => b[1] - a[1])[0];
+  if (repeated && repeated[1] >= 3){
+    alertCard.style.display = '';
+    alertCard.innerHTML = `<strong>Repeated sign-ins</strong><p>${escapeHtml(repeated[0])} signed in ${repeated[1]} times in the selected range.</p><strong>Review sessions -></strong>`;
+    return;
+  }
+  alertCard.style.display = 'none';
+}
+
+function render(){
+  const dateLogs = baseDateLogs();
+  const visible = filteredLogs();
+  updateCounts(dateLogs);
+  updateStats(visible, dateLogs);
+  updateHourBars(dateLogs);
+  renderTimeline(visible);
+  renderActiveUsers(dateLogs);
+  renderAlert(dateLogs);
 }
 
 function subscribeLogs(){
@@ -316,6 +596,26 @@ function subscribeLogs(){
     console.error(error);
     logList.innerHTML = `<div class="empty">${escapeHtml(error.message || 'Unable to load activity logs.')}</div>`;
   });
+}
+
+function exportCsv(){
+  const rows = filteredLogs().map(log => ({
+    time:timeText(logDate(log)),
+    action:titleCaseAction(log.action),
+    page:log.page || '',
+    user:log.email || log.userId || '',
+    patient:log.patientName || '',
+    uhid:log.uhid || '',
+    type:log.noteType || ''
+  }));
+  const headers = Object.keys(rows[0] || {time:'', action:'', page:'', user:'', patient:'', uhid:'', type:''});
+  const csv = [headers.join(',')].concat(rows.map(row => headers.map(header => `"${String(row[header] ?? '').replace(/"/g, '""')}"`).join(','))).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `woyz-activity-${selectedDate}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
 }
 
 loginForm.addEventListener('submit', async event => {
@@ -356,7 +656,8 @@ onAuthStateChanged(auth, user => {
   loginScreen.classList.add('hidden');
   appShell.classList.add('authenticated');
   userEmail.textContent = user.email || '';
-  syncDateInput();
+  footerAvatar.textContent = initials(user.email || 'Dr Gigy');
+  updateDateControls();
   subscribeLogs();
 });
 
@@ -364,32 +665,40 @@ searchInput.addEventListener('input', () => {
   searchTerm = searchInput.value || '';
   render();
 });
-dateInput.addEventListener('input', () => {
-  selectedDate = dateInput.value || dateInputValue(new Date());
-  syncDateInput();
-  render();
-});
+dateInput.addEventListener('input', () => setSelectedDate(dateInput.value || dateInputValue(new Date()), 'today'));
 previousDateBtn.addEventListener('click', () => moveSelectedDate(-1));
 nextDateBtn.addEventListener('click', () => moveSelectedDate(1));
-activityTabs.addEventListener('click', event => {
-  const button = event.target.closest('[data-tab]');
-  if (!button) return;
-  selectedActivityTab = button.dataset.tab || 'all';
-  activityTabs.querySelectorAll('.activity-tab').forEach(tab => tab.classList.toggle('active', tab === button));
-  render();
-});
-clearBtn.addEventListener('click', () => {
-  searchInput.value = '';
-  searchTerm = '';
-  selectedActivityTab = 'all';
-  activityTabs.querySelectorAll('.activity-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.tab === 'all'));
-  selectedDate = dateInputValue(new Date());
-  syncDateInput();
-  render();
-});
 refreshBtn.addEventListener('click', subscribeLogs);
 signoutBtn.addEventListener('click', () => signOut(auth));
-syncDateInput();
+csvBtn.addEventListener('click', exportCsv);
+pdfBtn.addEventListener('click', () => window.print());
+streamButtons.forEach(button => {
+  button.addEventListener('click', () => {
+    selectedActivityTab = button.dataset.tab || 'all';
+    streamButtons.forEach(item => item.classList.toggle('active', item === button));
+    render();
+  });
+});
+quickButtons.forEach(button => {
+  button.addEventListener('click', () => {
+    selectedQuickFilter = selectedQuickFilter === button.dataset.quick ? '' : button.dataset.quick;
+    quickButtons.forEach(item => item.classList.toggle('active', item.dataset.quick === selectedQuickFilter));
+    render();
+  });
+});
+rangeButtons.forEach(button => {
+  button.addEventListener('click', () => {
+    const today = dateInputValue(new Date());
+    if (button.dataset.range === 'today') setSelectedDate(today, 'today');
+    if (button.dataset.range === 'yesterday'){
+      const date = new Date();
+      date.setDate(date.getDate() - 1);
+      setSelectedDate(dateInputValue(date), 'yesterday');
+    }
+    if (button.dataset.range === '7days') setSelectedDate(today, '7days');
+  });
+});
+updateDateControls();
 </script>
 </body>
 </html>
