@@ -117,6 +117,9 @@ service cloud.firestore {
           "uhid",
           "visitDate",
           "visitType",
+          "geminiModel",
+          "recordingDuration",
+          "geminiAttempts",
           "createdAt"
         ])
         && request.resource.data.action is string
@@ -134,7 +137,10 @@ service cloud.firestore {
         && (!("patientName" in request.resource.data) || (request.resource.data.patientName is string && request.resource.data.patientName.size() <= 160))
         && (!("uhid" in request.resource.data) || (request.resource.data.uhid is string && request.resource.data.uhid.size() <= 80))
         && (!("visitDate" in request.resource.data) || (request.resource.data.visitDate is string && request.resource.data.visitDate.size() <= 20))
-        && (!("visitType" in request.resource.data) || (request.resource.data.visitType is string && request.resource.data.visitType.size() <= 20));
+        && (!("visitType" in request.resource.data) || (request.resource.data.visitType is string && request.resource.data.visitType.size() <= 20))
+        && (!("geminiModel" in request.resource.data) || (request.resource.data.geminiModel is string && request.resource.data.geminiModel.size() <= 80))
+        && (!("recordingDuration" in request.resource.data) || (request.resource.data.recordingDuration is string && request.resource.data.recordingDuration.size() <= 20))
+        && (!("geminiAttempts" in request.resource.data) || (request.resource.data.geminiAttempts is string && request.resource.data.geminiAttempts.size() <= 10));
       allow update, delete: if false;
     }
 
