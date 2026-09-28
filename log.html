@@ -62,6 +62,12 @@
   .stream-btn,.quick-btn{ width:100%; min-height:38px; border:0; border-radius:10px; background:transparent; display:grid; grid-template-columns:18px 1fr auto; align-items:center; gap:7px; padding:0 11px; text-align:left; color:#303743; font-weight:900; font-size:15px; }
   .stream-btn:hover,.quick-btn:hover{ background:#F4F2EE; }
   .stream-btn.active{ background:var(--teal); color:#fff; }
+  .note-subfilters{ display:none; gap:6px; padding:0 0 2px 24px; }
+  .note-subfilters.visible{ display:grid; }
+  .note-filter-btn{ width:100%; min-height:31px; border:0; border-radius:9px; background:transparent; display:grid; grid-template-columns:1fr auto; align-items:center; gap:7px; padding:0 8px 0 10px; text-align:left; color:#4B535F; font-weight:900; font-size:13px; }
+  .note-filter-btn:hover{ background:#F4F2EE; }
+  .note-filter-btn.active{ background:#FFF3DA; color:#A7680F; }
+  .note-filter-btn .pill-count{ min-width:26px; height:20px; font-size:12px; }
   .stream-dot{ width:9px; height:9px; border-radius:50%; background:#14181F; }
   .stream-btn[data-tab="users"] .stream-dot{ background:var(--blue); }
   .stream-btn[data-tab="notes"] .stream-dot{ background:var(--amber); }
@@ -177,6 +183,12 @@
       <button class="stream-btn active" type="button" data-tab="all"><span class="stream-dot"></span><span>All activity</span><span class="pill-count" id="countAll">0</span></button>
       <button class="stream-btn" type="button" data-tab="users"><span class="stream-dot"></span><span>Users</span><span class="pill-count" id="countUsers">0</span></button>
       <button class="stream-btn" type="button" data-tab="notes"><span class="stream-dot"></span><span>Notes</span><span class="pill-count" id="countNotes">0</span></button>
+      <div class="note-subfilters" id="noteSubfilters" aria-label="Note activity filters">
+        <button class="note-filter-btn active" type="button" data-note-filter="all"><span>All notes</span><span class="pill-count" id="countNoteAll">0</span></button>
+        <button class="note-filter-btn" type="button" data-note-filter="visit"><span>Visit note</span><span class="pill-count" id="countNoteVisit">0</span></button>
+        <button class="note-filter-btn" type="button" data-note-filter="discharge"><span>Discharge</span><span class="pill-count" id="countNoteDischarge">0</span></button>
+        <button class="note-filter-btn" type="button" data-note-filter="addon"><span>Add on</span><span class="pill-count" id="countNoteAddon">0</span></button>
+      </div>
       <button class="stream-btn" type="button" data-tab="admin"><span class="stream-dot"></span><span>Admin</span><span class="pill-count" id="countAdmin">0</span></button>
       <button class="stream-btn" type="button" data-tab="master"><span class="stream-dot"></span><span>Master</span><span class="pill-count" id="countMaster">0</span></button>
       <button class="stream-btn" type="button" data-tab="gemini"><span class="stream-dot"></span><span>Gemini API use</span><span class="pill-count" id="countGemini">0</span></button>
@@ -274,6 +286,8 @@ const logList = document.getElementById('logList');
 const activeUsers = document.getElementById('activeUsers');
 const hourBars = document.getElementById('hourBars');
 const streamButtons = Array.from(document.querySelectorAll('.stream-btn'));
+const noteSubfilters = document.getElementById('noteSubfilters');
+const noteFilterButtons = Array.from(document.querySelectorAll('.note-filter-btn'));
 const quickButtons = Array.from(document.querySelectorAll('.quick-btn'));
 const rangeButtons = Array.from(document.querySelectorAll('.range-btn'));
 const countEls = {
@@ -286,6 +300,12 @@ const countEls = {
   signins:document.getElementById('countSignins'),
   failed:document.getElementById('countFailed'),
   last60:document.getElementById('countLast60')
+};
+const noteCountEls = {
+  all:document.getElementById('countNoteAll'),
+  visit:document.getElementById('countNoteVisit'),
+  discharge:document.getElementById('countNoteDischarge'),
+  addon:document.getElementById('countNoteAddon')
 };
 const statEls = {
   eventsToday:document.getElementById('eventsToday'),
@@ -302,6 +322,7 @@ let searchTerm = '';
 let selectedDate = dateInputValue(new Date());
 let selectedRange = 'today';
 let selectedActivityTab = 'all';
+let selectedNoteFilter = 'all';
 let selectedQuickFilter = '';
 
 function escapeHtml(value){
@@ -374,6 +395,15 @@ function isGeminiApiLog(log){
   return /gemini|generativelanguage|google ai|api use|api_usage|generatecontent|voice_note_generated|discharge_summary_generated|add_on_completed/.test(haystack);
 }
 
+function noteActivityType(log){
+  const action = String(log.action || '').toLowerCase();
+  const noteType = String(log.noteType || '').toLowerCase();
+  const haystack = logHaystack(log);
+  if (/add_on|addon/.test(action) || /add on/.test(haystack)) return 'addon';
+  if (action.includes('discharge_summary') || noteType.includes('discharge') || haystack.includes('discharge summary')) return 'discharge';
+  return 'visit';
+}
+
 function technicalLogMeta(log){
   const items = [];
   if (log.recordingDuration) items.push(`recording: ${log.recordingDuration}`);
@@ -417,6 +447,7 @@ function filteredLogs(){
   return baseDateLogs().filter(log => {
     if (selectedActivityTab === 'gemini' && !isGeminiApiLog(log)) return false;
     if (selectedActivityTab !== 'all' && selectedActivityTab !== 'gemini' && categoryForLog(log) !== selectedActivityTab) return false;
+    if (selectedActivityTab === 'notes' && selectedNoteFilter !== 'all' && noteActivityType(log) !== selectedNoteFilter) return false;
     if (!logMatchesQuickFilter(log)) return false;
     if (term && !logHaystack(log).includes(term)) return false;
     return true;
@@ -456,8 +487,15 @@ function moveSelectedDate(days){
 
 function updateCounts(dateLogs){
   const counts = {all:dateLogs.length, users:0, notes:0, admin:0, master:0, gemini:0, signins:0, failed:0, last60:0};
+  const noteCounts = {all:0, visit:0, discharge:0, addon:0};
   dateLogs.forEach(log => {
-    counts[categoryForLog(log)] += 1;
+    const category = categoryForLog(log);
+    counts[category] += 1;
+    if (category === 'notes'){
+      const noteType = noteActivityType(log);
+      noteCounts.all += 1;
+      noteCounts[noteType] += 1;
+    }
     if (isGeminiApiLog(log)) counts.gemini += 1;
     const action = String(log.action || '').toLowerCase();
     if (action.includes('signed_in') || action.includes('sign')) counts.signins += 1;
@@ -468,6 +506,9 @@ function updateCounts(dateLogs){
   Object.entries(countEls).forEach(([key, el]) => {
     el.textContent = String(counts[key] || 0);
   });
+  Object.entries(noteCountEls).forEach(([key, el]) => {
+    el.textContent = String(noteCounts[key] || 0);
+  });
 }
 
 function updateStats(visible, dateLogs){
@@ -476,7 +517,9 @@ function updateStats(visible, dateLogs){
   const last = visible[0] || dateLogs[0];
   const lastDate = last ? logDate(last) : null;
   statEls.eventsToday.textContent = String(visible.length);
-  statEls.eventsSub.textContent = selectedActivityTab === 'all' ? 'All in Admin stream' : `${selectedActivityTab === 'gemini' ? 'Gemini API use' : titleCaseAction(selectedActivityTab)} stream`;
+  statEls.eventsSub.textContent = selectedActivityTab === 'all'
+    ? 'All in Admin stream'
+    : `${selectedActivityTab === 'notes' && selectedNoteFilter !== 'all' ? titleCaseAction(selectedNoteFilter) : selectedActivityTab === 'gemini' ? 'Gemini API use' : titleCaseAction(selectedActivityTab)} stream`;
   statEls.uniqueUsers.textContent = String(userMap.size);
   statEls.uniqueSub.textContent = Array.from(userMap.keys()).slice(0, 2).map(value => value.replace(/@.*/, '')).join(' / ') || 'No users yet';
   statEls.lastActivity.textContent = lastDate ? timeText(lastDate).replace(/\s/g, ' ') : '--';
@@ -566,6 +609,8 @@ function renderActiveUsers(dateLogs){
 function render(){
   const dateLogs = baseDateLogs();
   const visible = filteredLogs();
+  noteSubfilters.classList.toggle('visible', selectedActivityTab === 'notes');
+  noteFilterButtons.forEach(button => button.classList.toggle('active', button.dataset.noteFilter === selectedNoteFilter));
   updateCounts(dateLogs);
   updateStats(visible, dateLogs);
   updateHourBars(dateLogs);
@@ -641,6 +686,14 @@ streamButtons.forEach(button => {
   button.addEventListener('click', () => {
     selectedActivityTab = button.dataset.tab || 'all';
     streamButtons.forEach(item => item.classList.toggle('active', item === button));
+    render();
+  });
+});
+noteFilterButtons.forEach(button => {
+  button.addEventListener('click', () => {
+    selectedActivityTab = 'notes';
+    selectedNoteFilter = button.dataset.noteFilter || 'all';
+    streamButtons.forEach(item => item.classList.toggle('active', item.dataset.tab === 'notes'));
     render();
   });
 });
