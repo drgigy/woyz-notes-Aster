@@ -356,7 +356,7 @@ function initials(value){
 }
 
 function logHaystack(log){
-  return [log.action, log.page, log.email, log.userId, log.noteId, log.noteOwnerUid, log.noteType, log.patientName, log.uhid, log.visitDate, log.visitType].filter(Boolean).join(' ').toLowerCase();
+  return [log.action, log.page, log.email, log.userId, log.noteId, log.noteOwnerUid, log.noteType, log.patientName, log.uhid, log.visitDate, log.visitType, log.geminiModel, log.recordingDuration, log.geminiAttempts].filter(Boolean).join(' ').toLowerCase();
 }
 
 function categoryForLog(log){
@@ -372,6 +372,14 @@ function categoryForLog(log){
 function isGeminiApiLog(log){
   const haystack = logHaystack(log);
   return /gemini|generativelanguage|google ai|api use|api_usage|generatecontent|voice_note_generated|discharge_summary_generated|add_on_completed/.test(haystack);
+}
+
+function technicalLogMeta(log){
+  const items = [];
+  if (log.recordingDuration) items.push(`recording: ${log.recordingDuration}`);
+  if (log.geminiModel) items.push(`model: ${log.geminiModel}`);
+  if (log.geminiAttempts) items.push(`attempt: ${log.geminiAttempts}`);
+  return items.length ? ` / ${items.join(' / ')}` : '';
 }
 
 function logMatchesRange(log){
@@ -515,7 +523,7 @@ function renderTimeline(visible){
               <div class="event-main">
                 <strong>${escapeHtml(sameActionText(log))}</strong>
                 <span> to ${escapeHtml(actionTarget(log))}</span>
-                <div class="event-meta">${escapeHtml(user)} / page: ${escapeHtml(log.page || 'unknown')}${log.uhid ? ` / UHID: ${escapeHtml(log.uhid)}` : ''}</div>
+                <div class="event-meta">${escapeHtml(user)} / page: ${escapeHtml(log.page || 'unknown')}${log.uhid ? ` / UHID: ${escapeHtml(log.uhid)}` : ''}${escapeHtml(technicalLogMeta(log))}</div>
               </div>
             </div>
             <div class="event-badge ${category}">${escapeHtml(category)}</div>

@@ -2766,7 +2766,7 @@ function safeLogActivity(action, info = {}){
     email:cleanLogValue(user.email || '', 160),
     createdAt:serverTimestamp()
   };
-  const logFieldLimits = {noteId:120,noteOwnerUid:120,noteType:120,patientName:160,uhid:80,visitDate:20,visitType:20};
+  const logFieldLimits = {noteId:120,noteOwnerUid:120,noteType:120,patientName:160,uhid:80,visitDate:20,visitType:20,geminiModel:80,recordingDuration:20,geminiAttempts:10};
   Object.entries(logFieldLimits).forEach(([key, maxLength]) => {
     const value = cleanLogValue(info[key] || '', maxLength);
     if (value) payload[key] = value;
@@ -3034,6 +3034,8 @@ let activeIndex = null;
 let voiceInterval = null;
 let remainingSeconds = 300;
 let timerDeadlineMs = null;
+let recordingElapsedSeconds = 0;
+let recordingSegmentStartedAt = null;
 let mediaRecorder = null;
 let mediaStream = null;
 let audioChunks = [];
@@ -6597,9 +6599,41 @@ function startVoiceTimer(){
 
 function stopVoiceTimer({preserveRemaining = true} = {}){
   if (preserveRemaining && timerDeadlineMs) remainingSeconds = secondsUntilTimerDeadline();
+  captureRecordingElapsed();
   if (voiceInterval) clearInterval(voiceInterval);
   voiceInterval = null;
   timerDeadlineMs = null;
+}
+
+function resetRecordingMetadata(){
+  recordingElapsedSeconds = 0;
+  recordingSegmentStartedAt = null;
+}
+
+function markRecordingActive(){
+  if (!recordingSegmentStartedAt) recordingSegmentStartedAt = Date.now();
+}
+
+function captureRecordingElapsed(){
+  if (!recordingSegmentStartedAt) return;
+  recordingElapsedSeconds += Math.max(0, (Date.now() - recordingSegmentStartedAt) / 1000);
+  recordingSegmentStartedAt = null;
+}
+
+function recordingLogMetadata(generated = {}){
+  captureRecordingElapsed();
+  const metadata = {};
+  const durationSeconds = Math.max(0, Math.round(recordingElapsedSeconds));
+  if (durationSeconds) metadata.recordingDuration = formatLogDuration(durationSeconds);
+  if (generated.geminiModel) metadata.geminiModel = generated.geminiModel;
+  if (generated.geminiAttempt) metadata.geminiAttempts = String(generated.geminiAttempt);
+  return metadata;
+}
+
+function formatLogDuration(totalSeconds){
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return minutes ? `${minutes}m ${String(seconds).padStart(2, '0')}s` : `${seconds}s`;
 }
 
 function secondsUntilTimerDeadline(){
@@ -6631,7 +6665,10 @@ function extendRecordingTime(){
   addRecordingTime(300);
   const draft = records[activeIndex];
   draft.status = 'Recording extended by 5 minutes';
-  if (draft.recording && !voiceInterval) startVoiceTimer();
+  if (draft.recording && !voiceInterval){
+    startVoiceTimer();
+    markRecordingActive();
+  }
   const status = document.getElementById('voiceStatus');
   if (status) status.textContent = draft.status;
 }
@@ -6657,6 +6694,7 @@ async function handleSpaceAction(){
 async function startRecording(){
   const draft = records[activeIndex];
   try{
+    resetRecordingMetadata();
     mediaStream = await navigator.mediaDevices.getUserMedia({audio:true});
     audioChunks = [];
     setupAudioAnalyser(mediaStream);
@@ -6668,6 +6706,7 @@ async function startRecording(){
     draft.stopped = false;
     draft.status = 'Recording in progress…';
     startVoiceTimer();
+    markRecordingActive();
     startWaveformAnimation();
     renderVoiceWorkspace();
   }catch(error){
@@ -6692,6 +6731,7 @@ function resumeRecording(){
   draft.recording = true;
   draft.status = 'Recording in progress…';
   startVoiceTimer();
+  markRecordingActive();
   startWaveformAnimation();
   renderVoiceWorkspace();
 }
@@ -6734,6 +6774,7 @@ async function stopAndTranscribe(){
         shouldContinue:() => !draft.cancelProcessing && records.some(record => record.firestoreId === draft.firestoreId)
       }
     );
+    const generationLogMetadata = recordingLogMetadata(generated);
     draft.transcription = generated.text;
     draft.patientData = generated.patientData;
     draft.audioBlob = null;
@@ -6769,6 +6810,8 @@ async function stopAndTranscribe(){
       status:'Note ready',
       expiresAt:noteExpiryTimestamp(),
       updatedAt:serverTimestamp()
+    }).then(() => {
+      safeLogActivity('voice_note_generated', {...noteLogPayload(draft), ...generationLogMetadata});
     }).catch(error => {
       console.error('Generated note save failed:', error);
       const finalRecord = records.find(record => recordLocalKey(record) === draftKey) || draft;
@@ -7068,6 +7111,7 @@ async function startContinuationRecording(){
     return;
   }
   try{
+    resetRecordingMetadata();
     continuationState.audioBlob = null;
     mediaStream = await navigator.mediaDevices.getUserMedia({audio:true});
     audioChunks = [];
@@ -7080,6 +7124,7 @@ async function startContinuationRecording(){
     continuationState.paused = false;
     setContinuationStatus('Recording in progress...');
     startVoiceTimer();
+    markRecordingActive();
     startWaveformAnimation();
     renderContinuationDock();
   }catch(error){
@@ -7101,6 +7146,7 @@ function pauseResumeContinuationRecording(){
     continuationState.recording = true;
     continuationState.paused = false;
     startVoiceTimer();
+    markRecordingActive();
     startWaveformAnimation();
     setContinuationStatus('Recording in progress...');
   }
@@ -7110,7 +7156,10 @@ function pauseResumeContinuationRecording(){
 function extendContinuationRecording(){
   if (!continuationState.open || !continuationState.hasStarted || continuationState.processing) return;
   addRecordingTime(300);
-  if (continuationState.recording && !voiceInterval) startVoiceTimer();
+  if (continuationState.recording && !voiceInterval){
+    startVoiceTimer();
+    markRecordingActive();
+  }
   setContinuationStatus('Five minutes added.');
 }
 
@@ -7168,8 +7217,9 @@ async function stopAndAppendContinuation(){
             shouldContinue:() => continuationState.open && continuationState.targetId === targetId && continuationState.targetOwnerUid === targetOwnerUid
           }
         );
+        const generatedLogMetadata = recordingLogMetadata(generated);
         appendDocumentText(generated.text, continuationState.documentMode);
-        safeLogActivity('add_on_document_completed', noteLogPayload(targetRecord));
+        safeLogActivity('add_on_document_completed', {...noteLogPayload(targetRecord), ...generatedLogMetadata});
         setContinuationStatus(`${continuationState.documentMode} added. Review and save.`);
       }else{
         const targetRecord = continuationTargetRecord();
@@ -7180,8 +7230,9 @@ async function stopAndAppendContinuation(){
             shouldContinue:() => continuationState.open && continuationState.targetId === targetId && continuationState.targetOwnerUid === targetOwnerUid
           }
         );
-        appendContinuationText(addition);
-        safeLogActivity('add_on_completed', noteLogPayload(targetRecord));
+        const additionLogMetadata = recordingLogMetadata(addition);
+        appendContinuationText(addition.text);
+        safeLogActivity('add_on_completed', {...noteLogPayload(targetRecord), ...additionLogMetadata});
         setContinuationStatus('Added to selected note. Review and save.');
       }
     }
@@ -7203,6 +7254,7 @@ async function finishNewVoiceDraft(audioBlob, apiKey, onRetry){
   const draft = records[targetIndex];
   setContinuationStatus('Creating your note...');
   const generated = await sendAudioToGemini(audioBlob, apiKey, draft.selectedMode, onRetry || (message => setContinuationStatus(message)), draft.visitType || selectedVisitType, draft.patientData);
+  const generationLogMetadata = recordingLogMetadata(generated);
   draft.transcription = generated.text;
   draft.patientData = generated.patientData;
   draft.voiceDraft = false;
@@ -7247,7 +7299,7 @@ async function finishNewVoiceDraft(audioBlob, apiKey, onRetry){
     updatedAt:serverTimestamp()
   }).then(() => {
     clearRecordDirty(draft);
-    safeLogActivity('voice_note_generated', noteLogPayload(draft));
+    safeLogActivity('voice_note_generated', {...noteLogPayload(draft), ...generationLogMetadata});
   }).catch(error => {
     console.error('Generated continuation note save failed:', error);
     const visibleDraft = records[activeIndex] || draft;
@@ -7940,7 +7992,11 @@ async function sendContinuationAudioToGemini(audioBlob, apiKey, onRetry, targetR
   const responseText = payload.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('').trim();
   if (!responseText) throw noteServiceError('The service returned an empty response.', true);
   try{
-    return formatAddOnContinuationText(String(JSON.parse(responseText).text || '').trim(), config, targetRecord);
+    return {
+      text:formatAddOnContinuationText(String(JSON.parse(responseText).text || '').trim(), config, targetRecord),
+      geminiModel:payload.__geminiModel || '',
+      geminiAttempt:payload.__geminiAttempt || ''
+    };
   }catch(error){
     throw noteServiceError('The service returned an invalid structured response.', true);
   }
@@ -8092,7 +8148,12 @@ async function sendAudioToGemini(audioBlob, apiKey, selectedMode, onRetry, visit
     sex:String(parsed.patientSex || 'NIL').trim()
   };
   const patientData = patientDataWithFallback(extractedPatientData, fallbackPatientData);
-  return {text:formatGeneratedOutput(parsed, mode, patientData, visitContext),patientData};
+  return {
+    text:formatGeneratedOutput(parsed, mode, patientData, visitContext),
+    patientData,
+    geminiModel:payload.__geminiModel || '',
+    geminiAttempt:payload.__geminiAttempt || ''
+  };
 }
 
 function sleep(ms){
@@ -8178,7 +8239,11 @@ async function generateContentWithRetry({apiKey,audioBlob,audioData,systemPrompt
     }
     const payload = await response.json().catch(() => ({}));
     lastMessage = payload.error?.message || response.statusText || 'Note processing failed.';
-    if (response.ok) return payload;
+    if (response.ok){
+      payload.__geminiModel = plan.model;
+      payload.__geminiAttempt = attempt;
+      return payload;
+    }
     if (!isTransientGeminiError(response.status, lastMessage) || attempt === maxAttempts){
       throw noteServiceError(lastMessage, isTransientGeminiError(response.status, lastMessage));
     }
