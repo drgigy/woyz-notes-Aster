@@ -4860,6 +4860,19 @@ function showHomeScreen(){
   });
 }
 
+function goHomeToday(){
+  if (voiceDraftInteractionLocked()) return;
+  selectedVisitDate = maxAccessibleVisitDate();
+  if (searchScope === 'all'){
+    searchScope = 'today';
+    selectedTimelineKey = null;
+    updateSearchScopeToggle();
+  }
+  updateDateNavigation();
+  subscribeToSelectedDate();
+  showHomeScreen();
+}
+
 function updateContinueNoteButton(){
   const canContinue = selectedRecordCanContinue();
   const record = records[activeIndex];
@@ -8565,6 +8578,7 @@ async function withDraftCreationLock(task){
 
 async function createVoiceDraft(mode = null){
   if (!currentUser) return;
+  if (!canCreateNewEntryForSelectedDate()) return;
   return withDraftCreationLock(async () => {
     homeModeActive = false;
     const selectedMode = mode || null;
@@ -8630,6 +8644,7 @@ async function createVoiceDraft(mode = null){
 
 async function createManualDraft(){
   if (!currentUser) return;
+  if (!canCreateNewEntryForSelectedDate()) return;
   return withDraftCreationLock(async () => {
     if (searchScope === 'all'){
       searchScope = 'today';
@@ -8825,6 +8840,16 @@ function maxAccessibleVisitDate(){
   return dateOnly(0);
 }
 
+function isSelectedVisitDateToday(){
+  return dateInputValue(selectedVisitDate) === dateInputValue(maxAccessibleVisitDate());
+}
+
+function canCreateNewEntryForSelectedDate(){
+  if (isSelectedVisitDateToday()) return true;
+  showToast('New entries can be created for today only. Add-on is allowed for previous notes.');
+  return false;
+}
+
 function clampAccessibleVisitDate(date){
   const candidate = new Date(date);
   candidate.setHours(0,0,0,0);
@@ -8959,7 +8984,7 @@ mobileListBtn.addEventListener('click', () => { if (!voiceDraftInteractionLocked
 mobileSidebarNewBtn.addEventListener('click', () => {
   if (voiceDraftInteractionLocked()) return;
   closeMobileSidebar();
-  showHomeScreen();
+  goHomeToday();
 });
 mobileSidebarSettingsBtn.addEventListener('click', event => {
   event.stopPropagation();
@@ -8977,7 +9002,7 @@ topbarPatient.addEventListener('keydown', event => {
 mobileBackdrop.addEventListener('click', closeMobileSidebar);
 mobileCopyBtn.addEventListener('click', () => { if (!voiceDraftInteractionLocked()) copyBtn.click(); });
 mobileDeleteBtn.addEventListener('click', () => { if (!voiceDraftInteractionLocked()) deleteBtn.click(); });
-mobileHomeBtn.addEventListener('click', showHomeScreen);
+mobileHomeBtn.addEventListener('click', goHomeToday);
 mobileTemplateSheet.addEventListener('click', async event => {
   const button = event.target.closest('[data-mobile-template-mode]');
   if (!button) return;
@@ -9366,7 +9391,7 @@ recordBtn.addEventListener('click', async event => {
   event.preventDefault();
 });
 addNoteBtn.addEventListener('click', () => {
-  showHomeScreen();
+  goHomeToday();
   closeMobileSidebar();
 });
 
