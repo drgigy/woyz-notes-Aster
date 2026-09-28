@@ -336,7 +336,9 @@ const statEls = {
 };
 
 let unsubscribeLogs = null;
+let unsubscribeUsers = null;
 let logs = [];
+let userProfiles = new Map();
 let searchTerm = '';
 let selectedDate = dateInputValue(new Date());
 let selectedRange = 'today';
@@ -395,8 +397,25 @@ function initials(value){
   return parts.slice(0, 2).map(part => part[0]).join('').toUpperCase();
 }
 
+function logCredentialName(log){
+  return log.credentialName || userProfiles.get(log.userId)?.credentialName || '';
+}
+
 function logHaystack(log){
-  return [log.action, log.page, log.email, log.userId, log.noteId, log.noteOwnerUid, log.noteType, log.patientName, log.uhid, log.visitDate, log.visitType, log.geminiModel, log.recordingDuration, log.geminiAttempts].filter(Boolean).join(' ').toLowerCase();
+  return [log.action, log.page, log.email, logCredentialName(log), log.userId, log.noteId, log.noteOwnerUid, log.noteType, log.patientName, log.uhid, log.visitDate, log.visitType, log.geminiModel, log.recordingDuration, log.geminiAttempts].filter(Boolean).join(' ').toLowerCase();
+}
+
+function logActor(log){
+  return logCredentialName(log) || log.email || log.userId || 'Unknown user';
+}
+
+function logActorDetail(log){
+  const items = [];
+  const credentialName = logCredentialName(log);
+  if (credentialName) items.push(`credential: ${credentialName}`);
+  if (log.email) items.push(log.email);
+  if (log.page) items.push(`page: ${log.page}`);
+  return items.join(' / ') || 'activity stream';
 }
 
 function categoryForLog(log){
@@ -549,7 +568,7 @@ function updateCounts(dateLogs){
 
 function updateStats(visible, dateLogs){
   const userMap = new Map();
-  dateLogs.forEach(log => userMap.set(log.email || log.userId || 'Unknown user', true));
+  dateLogs.forEach(log => userMap.set(logActor(log), true));
   const last = visible[0] || dateLogs[0];
   const lastDate = last ? logDate(last) : null;
   statEls.eventsToday.textContent = String(visible.length);
@@ -592,7 +611,8 @@ function renderTimeline(visible){
       ${group.map(log => {
         const category = selectedActivityTab === 'gemini' && isGeminiApiLog(log) ? 'gemini' : categoryForLog(log);
         const date = logDate(log);
-        const user = log.email || log.userId || 'Unknown user';
+        const user = logActor(log);
+        const detail = logActorDetail(log);
         return `
           <article class="event-row">
             <div class="event-time">${escapeHtml(timeText(date))}</div>
@@ -602,7 +622,7 @@ function renderTimeline(visible){
               <div class="event-main">
                 <strong>${escapeHtml(sameActionText(log))}</strong>
                 <span> to ${escapeHtml(actionTarget(log))}</span>
-                <div class="event-meta">${escapeHtml(user)} / page: ${escapeHtml(log.page || 'unknown')}${log.uhid ? ` / UHID: ${escapeHtml(log.uhid)}` : ''}${escapeHtml(technicalLogMeta(log))}</div>
+                <div class="event-meta">${escapeHtml(detail)}${log.uhid ? ` / UHID: ${escapeHtml(log.uhid)}` : ''}${escapeHtml(technicalLogMeta(log))}</div>
               </div>
             </div>
             <div class="event-badge ${category}">${escapeHtml(category)}</div>
@@ -645,11 +665,12 @@ function renderGeminiTimeline(visible){
           <tbody>
             ${group.map(log => {
               const date = logDate(log);
-              const user = log.email || log.userId || 'Unknown user';
+              const user = logActor(log);
+              const detail = logActorDetail(log);
               return `
                 <tr>
                   <td class="gemini-time">${escapeHtml(timeText(date))}</td>
-                  <td class="gemini-user" title="${escapeHtml(user)}">${escapeHtml(user.replace(/@.*/, '') || user)}</td>
+                  <td class="gemini-user" title="${escapeHtml(detail)}">${escapeHtml(user.replace(/@.*/, '') || user)}</td>
                   <td class="gemini-action" title="${escapeHtml(sameActionText(log))}">${escapeHtml(sameActionText(log))}</td>
                   <td class="gemini-patient" title="${escapeHtml(actionTarget(log))}">${escapeHtml(actionTarget(log))}</td>
                   <td class="gemini-uhid" title="${escapeHtml(log.uhid || '')}">${escapeHtml(geminiValue(log.uhid))}</td>
@@ -670,7 +691,7 @@ function renderGeminiTimeline(visible){
 function renderActiveUsers(dateLogs){
   const users = new Map();
   dateLogs.forEach(log => {
-    const key = log.email || log.userId || 'Unknown user';
+    const key = logActor(log);
     const date = logDate(log);
     const item = users.get(key) || {key, count:0, last:null};
     item.count += 1;
@@ -726,6 +747,18 @@ function subscribeLogs(){
   });
 }
 
+function subscribeUserProfiles(){
+  if (unsubscribeUsers) unsubscribeUsers();
+  unsubscribeUsers = onSnapshot(collection(db, 'users'), snapshot => {
+    userProfiles = new Map(snapshot.docs.map(doc => [doc.id, doc.data() || {}]));
+    render();
+  }, error => {
+    console.warn('Unable to load user profile labels:', error);
+    userProfiles = new Map();
+    render();
+  });
+}
+
 loginForm.addEventListener('submit', async event => {
   event.preventDefault();
   loginError.textContent = '';
@@ -744,8 +777,11 @@ loginForm.addEventListener('submit', async event => {
 
 onAuthStateChanged(auth, user => {
   if (unsubscribeLogs) unsubscribeLogs();
+  if (unsubscribeUsers) unsubscribeUsers();
   unsubscribeLogs = null;
+  unsubscribeUsers = null;
   logs = [];
+  userProfiles = new Map();
   render();
   if (!user){
     appShell.classList.remove('authenticated');
@@ -766,6 +802,7 @@ onAuthStateChanged(auth, user => {
   userEmail.textContent = user.email || '';
   footerAvatar.textContent = initials(user.email || 'Dr Gigy');
   updateDateControls();
+  subscribeUserProfiles();
   subscribeLogs();
 });
 
