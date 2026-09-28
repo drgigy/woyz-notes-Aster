@@ -27,6 +27,9 @@ service cloud.firestore {
       return [
         "credentialName",
         "credentialUpdatedAt",
+        "doctorCredentialName",
+        "doctorCredentialEmployeeId",
+        "doctorCredentialUpdatedAt",
         "prescriptionLayout",
         "prescriptionLayoutUpdatedAt",
         "email",

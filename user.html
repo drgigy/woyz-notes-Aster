@@ -664,6 +664,17 @@
   .auth-input{ width:100%; border:1.5px solid var(--border); border-radius:10px; padding:12px 13px; font:14px 'IBM Plex Mono',monospace; outline:none; }
   .auth-input:focus{ border-color:var(--focus); box-shadow:0 0 0 3px rgba(143,185,172,.2); }
   .auth-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }
+  .doctor-card{ border:1px solid var(--border); border-radius:14px; padding:14px; background:#F8FBFA; display:grid; gap:10px; }
+  .doctor-empty{ color:var(--muted); font:800 13px/1.45 'Inter',sans-serif; }
+  .doctor-field{ display:grid; gap:4px; }
+  .doctor-field span{ color:var(--muted); font:900 11px 'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.08em; }
+  .doctor-field strong{ color:var(--ink); font:900 15px 'Inter',sans-serif; }
+  .doctor-scan-box{ display:none; margin-top:12px; border:1px dashed #CFE1DA; border-radius:14px; overflow:hidden; background:#111; }
+  .doctor-scan-box.open{ display:block; }
+  .doctor-scan-video{ width:100%; aspect-ratio:4/3; display:block; object-fit:cover; background:#111; }
+  .doctor-status{ min-height:18px; margin-top:10px; color:var(--muted); font:700 12px 'Inter',sans-serif; }
+  .doctor-status.error{ color:#B93B28; }
+  .doctor-status.success{ color:var(--teal-deep); }
   .email-modal{ width:min(500px,100%); }
   .remember-email-row{ margin:12px 0 8px; display:flex; align-items:center; gap:10px; font:800 13px 'Inter',sans-serif; color:var(--ink); }
   .remember-email-row input{ width:16px; height:16px; accent-color:var(--teal); }
@@ -2491,6 +2502,10 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 21a8 8 0 1 0-16 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.8"/></svg>
             Select credential
           </button>
+          <button class="settings-item auth-item" id="doctorCredentialBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="4" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="4" y="14" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.8"/><path d="M14 14h2.5v2.5H19V20h-5v-6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+            Doctor credential
+          </button>
           <button class="settings-item auth-item" id="layoutBtn">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M4 9h16M8 13h8M8 16h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             Layout
@@ -2595,6 +2610,35 @@
     <div class="auth-actions">
       <button class="btn" id="credentialCancelBtn">Close</button>
       <button class="btn btn-copy" id="credentialSaveBtn">Save name</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="doctorCredentialModal" role="dialog" aria-modal="true" aria-labelledby="doctorCredentialModalTitle">
+  <div class="auth-modal">
+    <div class="auth-modal-head">
+      <h2 class="auth-modal-title" id="doctorCredentialModalTitle">Doctor credential</h2>
+      <button class="modal-close" id="doctorCredentialCloseBtn" aria-label="Close doctor credential dialog">&times;</button>
+    </div>
+    <p class="auth-help">Scan the doctor QR code. This is optional and is saved only for this signed-in user.</p>
+    <div class="doctor-card" id="doctorCredentialCard">
+      <div class="doctor-empty" id="doctorCredentialEmpty">No doctor selected.</div>
+      <div class="doctor-field" id="doctorCredentialNameRow" hidden>
+        <span>Doctor name</span>
+        <strong id="doctorCredentialNameText">NIL</strong>
+      </div>
+      <div class="doctor-field" id="doctorCredentialIdRow" hidden>
+        <span>Employee ID</span>
+        <strong id="doctorCredentialIdText">NIL</strong>
+      </div>
+    </div>
+    <div class="doctor-scan-box" id="doctorScanBox">
+      <video class="doctor-scan-video" id="doctorScanVideo" playsinline muted></video>
+    </div>
+    <div class="doctor-status" id="doctorCredentialStatus"></div>
+    <div class="auth-actions">
+      <button class="btn" id="doctorCredentialScanBtn">Add doctor</button>
+      <button class="btn btn-copy" id="doctorCredentialSaveBtn">Save</button>
     </div>
   </div>
 </div>
@@ -2862,6 +2906,7 @@ const settingsBtn = document.getElementById('settingsBtn');
 const settingsMenu = document.getElementById('settingsMenu');
 const authKeyBtn = document.getElementById('authKeyBtn');
 const credentialBtn = document.getElementById('credentialBtn');
+const doctorCredentialBtn = document.getElementById('doctorCredentialBtn');
 const layoutBtn = document.getElementById('layoutBtn');
 const trashBtn = document.getElementById('trashBtn');
 const authModal = document.getElementById('authModal');
@@ -2874,6 +2919,18 @@ const credentialNameInput = document.getElementById('credentialNameInput');
 const credentialCloseBtn = document.getElementById('credentialCloseBtn');
 const credentialCancelBtn = document.getElementById('credentialCancelBtn');
 const credentialSaveBtn = document.getElementById('credentialSaveBtn');
+const doctorCredentialModal = document.getElementById('doctorCredentialModal');
+const doctorCredentialCloseBtn = document.getElementById('doctorCredentialCloseBtn');
+const doctorCredentialScanBtn = document.getElementById('doctorCredentialScanBtn');
+const doctorCredentialSaveBtn = document.getElementById('doctorCredentialSaveBtn');
+const doctorCredentialEmpty = document.getElementById('doctorCredentialEmpty');
+const doctorCredentialNameRow = document.getElementById('doctorCredentialNameRow');
+const doctorCredentialIdRow = document.getElementById('doctorCredentialIdRow');
+const doctorCredentialNameText = document.getElementById('doctorCredentialNameText');
+const doctorCredentialIdText = document.getElementById('doctorCredentialIdText');
+const doctorCredentialStatus = document.getElementById('doctorCredentialStatus');
+const doctorScanBox = document.getElementById('doctorScanBox');
+const doctorScanVideo = document.getElementById('doctorScanVideo');
 const emailModal = document.getElementById('emailModal');
 const emailModalTitle = document.getElementById('emailModalTitle');
 const emailCloseBtn = document.getElementById('emailCloseBtn');
@@ -3056,6 +3113,10 @@ let groupsUnsubscribe = null;
 let sharedOwnerIds = [];
 let ownerProfiles = {};
 let prescriptionLayoutState = DEFAULT_PRESCRIPTION_LAYOUT;
+let doctorCredentialDraft = null;
+let doctorScanStream = null;
+let doctorScanDetector = null;
+let doctorScanFrameId = null;
 let recordSearchTerm = '';
 let searchScope = 'today';
 let allRecords = [];
@@ -8875,6 +8936,129 @@ function closeCredentialModal(){
   credentialNameInput.value = '';
 }
 
+function doctorCredentialFromProfile(profile = {}){
+  const name = cleanLogValue(profile.doctorCredentialName || '', 120);
+  const employeeId = cleanLogValue(profile.doctorCredentialEmployeeId || '', 80);
+  return name && employeeId ? {name, employeeId} : null;
+}
+
+function renderDoctorCredentialModal(){
+  const credential = doctorCredentialDraft;
+  const hasCredential = Boolean(credential?.name && credential?.employeeId);
+  doctorCredentialEmpty.hidden = hasCredential;
+  doctorCredentialNameRow.hidden = !hasCredential;
+  doctorCredentialIdRow.hidden = !hasCredential;
+  doctorCredentialNameText.textContent = hasCredential ? credential.name : 'NIL';
+  doctorCredentialIdText.textContent = hasCredential ? credential.employeeId : 'NIL';
+  doctorCredentialScanBtn.textContent = hasCredential ? 'Change doctor' : 'Add doctor';
+}
+
+function setDoctorCredentialStatus(message = '', type = ''){
+  doctorCredentialStatus.textContent = message;
+  doctorCredentialStatus.classList.toggle('error', type === 'error');
+  doctorCredentialStatus.classList.toggle('success', type === 'success');
+}
+
+function parseDoctorQrText(value){
+  const parts = String(value || '').split(',').map(part => part.trim()).filter(Boolean);
+  if (parts.length < 3 || parts[0] !== 'Aster@doc1') return null;
+  const name = cleanLogValue(parts[1], 120);
+  const employeeId = cleanLogValue(parts.slice(2).join(' '), 80);
+  return name && employeeId ? {name, employeeId} : null;
+}
+
+function stopDoctorScanner(){
+  if (doctorScanFrameId) cancelAnimationFrame(doctorScanFrameId);
+  doctorScanFrameId = null;
+  if (doctorScanStream){
+    doctorScanStream.getTracks().forEach(track => track.stop());
+  }
+  doctorScanStream = null;
+  doctorScanVideo.srcObject = null;
+  doctorScanBox.classList.remove('open');
+  doctorCredentialScanBtn.disabled = false;
+}
+
+async function scanDoctorFrame(){
+  if (!doctorScanStream || !doctorScanDetector) return;
+  try{
+    if (doctorScanVideo.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA){
+      const codes = await doctorScanDetector.detect(doctorScanVideo);
+      const rawValue = codes.find(code => code.rawValue)?.rawValue || '';
+      if (rawValue){
+        const credential = parseDoctorQrText(rawValue);
+        if (credential){
+          doctorCredentialDraft = credential;
+          renderDoctorCredentialModal();
+          setDoctorCredentialStatus('Doctor QR scanned. Press Save to keep it.', 'success');
+          stopDoctorScanner();
+          return;
+        }
+        setDoctorCredentialStatus('QR detected, but it is not a valid Aster doctor QR.', 'error');
+      }
+    }
+  }catch(error){
+    console.warn('Doctor QR scan failed:', error);
+  }
+  doctorScanFrameId = requestAnimationFrame(scanDoctorFrame);
+}
+
+async function startDoctorScanner(){
+  if (!navigator.mediaDevices?.getUserMedia){
+    setDoctorCredentialStatus('Camera is not available on this device/browser.', 'error');
+    return;
+  }
+  if (!('BarcodeDetector' in window)){
+    setDoctorCredentialStatus('QR scanning is not supported by this browser. Please use Chrome on mobile.', 'error');
+    return;
+  }
+  stopDoctorScanner();
+  doctorCredentialScanBtn.disabled = true;
+  setDoctorCredentialStatus('Opening rear camera...', '');
+  try{
+    doctorScanDetector = new BarcodeDetector({formats:['qr_code']});
+    doctorScanStream = await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'}},
+      audio:false
+    });
+    doctorScanVideo.srcObject = doctorScanStream;
+    doctorScanBox.classList.add('open');
+    await doctorScanVideo.play();
+    doctorCredentialScanBtn.disabled = false;
+    setDoctorCredentialStatus('Point the rear camera at the doctor QR code.', '');
+    doctorScanFrameId = requestAnimationFrame(scanDoctorFrame);
+  }catch(error){
+    console.error('Unable to open doctor QR scanner:', error);
+    stopDoctorScanner();
+    setDoctorCredentialStatus('Unable to open camera. Please allow camera permission and try again.', 'error');
+  }
+}
+
+async function openDoctorCredentialModal(){
+  if (!currentUser) return;
+  closeSettings();
+  stopDoctorScanner();
+  setDoctorCredentialStatus('', '');
+  doctorCredentialDraft = doctorCredentialFromProfile(ownerProfiles[currentUser.uid]);
+  doctorCredentialModal.classList.add('open');
+  renderDoctorCredentialModal();
+  try{
+    const snapshot = await getDoc(doc(db,'users',currentUser.uid));
+    doctorCredentialDraft = doctorCredentialFromProfile(snapshot.data() || {});
+    renderDoctorCredentialModal();
+  }catch(error){
+    renderDoctorCredentialModal();
+  }
+}
+
+function closeDoctorCredentialModal(){
+  stopDoctorScanner();
+  doctorCredentialModal.classList.remove('open');
+  setDoctorCredentialStatus('', '');
+  doctorCredentialSaveBtn.disabled = false;
+  doctorCredentialSaveBtn.textContent = 'Save';
+}
+
 function timestampMillis(value){
   return value?.toMillis?.() || value?.toDate?.()?.getTime?.() || 0;
 }
@@ -9552,7 +9736,7 @@ addNoteBtn.addEventListener('click', () => {
 
 document.addEventListener('keydown', (event) => {
   const isTyping = ['INPUT','TEXTAREA'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable;
-  if (isTyping || authModal.classList.contains('open') || credentialModal.classList.contains('open') || emailModal.classList.contains('open') || trashModal.classList.contains('open') || layoutModal.classList.contains('open') || mmseModal.classList.contains('open')) return;
+  if (isTyping || authModal.classList.contains('open') || credentialModal.classList.contains('open') || doctorCredentialModal.classList.contains('open') || emailModal.classList.contains('open') || trashModal.classList.contains('open') || layoutModal.classList.contains('open') || mmseModal.classList.contains('open')) return;
   if (continuationState.open){
     if (event.code === 'Space'){
       event.preventDefault();
@@ -9582,6 +9766,10 @@ credentialBtn.addEventListener('click', openCredentialModal);
 credentialCloseBtn.addEventListener('click', closeCredentialModal);
 credentialCancelBtn.addEventListener('click', closeCredentialModal);
 credentialModal.addEventListener('click', event => { if (event.target === credentialModal) closeCredentialModal(); });
+doctorCredentialBtn.addEventListener('click', openDoctorCredentialModal);
+doctorCredentialCloseBtn.addEventListener('click', closeDoctorCredentialModal);
+doctorCredentialModal.addEventListener('click', event => { if (event.target === doctorCredentialModal) closeDoctorCredentialModal(); });
+doctorCredentialScanBtn.addEventListener('click', startDoctorScanner);
 layoutBtn.addEventListener('click', openLayoutModal);
 layoutCloseBtn.addEventListener('click', closeLayoutModal);
 layoutCancelBtn.addEventListener('click', closeLayoutModal);
@@ -9703,6 +9891,39 @@ credentialSaveBtn.addEventListener('click', async () => {
   }catch(error){
     credentialSaveBtn.textContent = 'Try again';
     credentialSaveBtn.disabled = false;
+  }
+});
+
+doctorCredentialSaveBtn.addEventListener('click', async () => {
+  if (!currentUser) return;
+  if (!doctorCredentialDraft?.name || !doctorCredentialDraft?.employeeId){
+    closeDoctorCredentialModal();
+    return;
+  }
+  doctorCredentialSaveBtn.disabled = true;
+  doctorCredentialSaveBtn.textContent = 'Saving...';
+  try{
+    await setDoc(doc(db,'users',currentUser.uid),{
+      doctorCredentialName:doctorCredentialDraft.name,
+      doctorCredentialEmployeeId:doctorCredentialDraft.employeeId,
+      doctorCredentialUpdatedAt:serverTimestamp()
+    },{merge:true});
+    ownerProfiles[currentUser.uid] = {
+      ...(ownerProfiles[currentUser.uid] || {}),
+      doctorCredentialName:doctorCredentialDraft.name,
+      doctorCredentialEmployeeId:doctorCredentialDraft.employeeId
+    };
+    doctorCredentialSaveBtn.textContent = 'Saved';
+    setTimeout(() => {
+      doctorCredentialSaveBtn.textContent = 'Save';
+      doctorCredentialSaveBtn.disabled = false;
+      closeDoctorCredentialModal();
+    }, 700);
+  }catch(error){
+    console.error('Unable to save doctor credential:', error);
+    doctorCredentialSaveBtn.textContent = 'Try again';
+    doctorCredentialSaveBtn.disabled = false;
+    setDoctorCredentialStatus('Unable to save doctor credential. Please try again.', 'error');
   }
 });
 

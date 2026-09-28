@@ -151,6 +151,7 @@
   .gemini-duration{ width:95px; }
   .gemini-model{ width:145px; }
   .gemini-attempt{ width:80px; }
+  .gemini-doctor{ width:155px; }
   .gemini-page{ width:90px; }
   @media (max-width:1200px){
     .app.authenticated{ grid-template-columns:270px minmax(0,1fr); }
@@ -401,8 +402,15 @@ function logCredentialName(log){
   return log.credentialName || userProfiles.get(log.userId)?.credentialName || '';
 }
 
+function logDoctorCredential(log){
+  const profile = userProfiles.get(log.userId) || {};
+  const name = profile.doctorCredentialName || log.doctorCredentialName || '';
+  const employeeId = profile.doctorCredentialEmployeeId || log.doctorCredentialEmployeeId || '';
+  return name && employeeId ? `${name} (${employeeId})` : 'NIL';
+}
+
 function logHaystack(log){
-  return [log.action, log.page, log.email, logCredentialName(log), log.userId, log.noteId, log.noteOwnerUid, log.noteType, log.patientName, log.uhid, log.visitDate, log.visitType, log.geminiModel, log.recordingDuration, log.geminiAttempts].filter(Boolean).join(' ').toLowerCase();
+  return [log.action, log.page, log.email, logCredentialName(log), logDoctorCredential(log), log.userId, log.noteId, log.noteOwnerUid, log.noteType, log.patientName, log.uhid, log.visitDate, log.visitType, log.geminiModel, log.recordingDuration, log.geminiAttempts].filter(Boolean).join(' ').toLowerCase();
 }
 
 function logActor(log){
@@ -415,6 +423,7 @@ function logActorDetail(log){
   if (credentialName) items.push(`credential: ${credentialName}`);
   if (log.email) items.push(log.email);
   if (log.page) items.push(`page: ${log.page}`);
+  items.push(`doctor: ${logDoctorCredential(log)}`);
   return items.join(' / ') || 'activity stream';
 }
 
@@ -659,6 +668,7 @@ function renderGeminiTimeline(visible){
               <th class="gemini-duration">Recording</th>
               <th class="gemini-model">Model</th>
               <th class="gemini-attempt">Attempt</th>
+              <th class="gemini-doctor">Doctor</th>
               <th class="gemini-page">Page</th>
             </tr>
           </thead>
@@ -677,6 +687,7 @@ function renderGeminiTimeline(visible){
                   <td class="gemini-duration">${escapeHtml(geminiDuration(log))}</td>
                   <td class="gemini-model" title="${escapeHtml(log.geminiModel || '')}">${escapeHtml(geminiValue(log.geminiModel))}</td>
                   <td class="gemini-attempt">${escapeHtml(geminiAttempts(log))}</td>
+                  <td class="gemini-doctor" title="${escapeHtml(logDoctorCredential(log))}">${escapeHtml(logDoctorCredential(log))}</td>
                   <td class="gemini-page">${escapeHtml(geminiValue(log.page))}</td>
                 </tr>
               `;
