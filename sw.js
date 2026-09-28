@@ -1,9 +1,9 @@
-const CACHE_NAME = 'woyz-notes-v224';
+const CACHE_NAME = 'woyz-notes-v225';
 const APP_SHELL = [
   './',
   './index.html',
   './user.html',
-  './loh.html',
+  './log.html',
   './master-admin.html',
   './demo.html',
   './firebase-config.js',
