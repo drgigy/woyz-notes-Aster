@@ -51,11 +51,21 @@
   .sidebar .brand{ justify-content:flex-start; margin-bottom:10px; }
   .sidebar .brand-pill{ font-size:24px; }
   .search{ display:grid; gap:12px; }
-  .filters{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .meta{ color:var(--muted); font:700 12px 'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.04em; }
   .content{ min-width:0; display:flex; flex-direction:column; min-height:100vh; }
-  .topbar{ min-height:82px; background:#fff; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 28px; position:sticky; top:0; z-index:4; }
+  .topbar{ min-height:96px; background:#fff; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:18px; padding:18px 28px; position:sticky; top:0; z-index:4; }
+  .topbar-main{ min-width:220px; }
   .topbar-actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+  .date-nav{ display:flex; align-items:center; gap:8px; }
+  .date-step{ width:48px; height:48px; border:1.5px solid var(--border); border-radius:13px; background:#F3F7F5; color:#16263A; font-size:31px; line-height:1; font-weight:800; cursor:pointer; display:grid; place-items:center; }
+  .date-step:hover{ background:var(--teal-wash); border-color:#BBD2CA; }
+  .date-input-wrap{ position:relative; display:block; }
+  .date-input{ width:178px; height:48px; border-radius:13px; padding:0 42px 0 22px; font-size:18px; font-weight:800; letter-spacing:.01em; color:#182533; }
+  .date-input::-webkit-calendar-picker-indicator{ opacity:1; cursor:pointer; position:absolute; right:14px; }
+  .activity-tabs{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; }
+  .activity-tab{ min-height:40px; border:1.5px solid var(--border); border-radius:999px; background:#fff; color:#52655D; padding:0 15px; font-size:13px; font-weight:800; cursor:pointer; }
+  .activity-tab.active{ background:var(--teal); border-color:var(--teal); color:#fff; box-shadow:0 10px 22px -18px rgba(20,35,29,.65); }
+  .activity-tab:not(.active):hover{ background:var(--teal-wash); border-color:#BBD2CA; color:var(--teal-dark); }
   .log-list{ padding:28px; display:grid; gap:12px; }
   .log-item{ background:#fff; border:1px solid var(--border); border-radius:12px; padding:16px 18px; box-shadow:0 14px 34px -32px rgba(20,35,29,.45); display:grid; gap:8px; }
   .log-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
@@ -69,6 +79,8 @@
     .app.authenticated{ grid-template-columns:1fr; }
     .sidebar{ min-height:auto; border-right:0; border-bottom:1px solid var(--border); }
     .topbar{ position:static; align-items:flex-start; flex-direction:column; }
+    .activity-tabs{ justify-content:flex-start; }
+    .topbar-actions{ justify-content:flex-start; }
     .log-list{ padding:18px; }
     .log-head{ flex-direction:column; gap:6px; }
   }
@@ -94,20 +106,31 @@
     <div class="brand"><span class="brand-pill"><span class="brand-dot"></span>WOYZ</span><span>Log</span></div>
     <div class="search">
       <input id="searchInput" type="search" autocomplete="off" placeholder="Search user, action, patient, UHID">
-      <div class="filters">
-        <input id="dateInput" type="date" aria-label="Filter by date">
-        <button class="btn ghost" id="clearBtn" type="button">Clear</button>
-      </div>
+      <button class="btn ghost" id="clearBtn" type="button">Clear search</button>
       <div class="meta" id="logCount">0 activities</div>
     </div>
   </aside>
   <main class="content">
     <header class="topbar">
-      <div>
+      <div class="topbar-main">
         <h1>Activity log</h1>
         <p class="sub" id="userEmail"></p>
       </div>
+      <div class="activity-tabs" id="activityTabs" aria-label="Activity type filters">
+        <button class="activity-tab active" type="button" data-tab="all">All</button>
+        <button class="activity-tab" type="button" data-tab="users">Users</button>
+        <button class="activity-tab" type="button" data-tab="notes">Notes</button>
+        <button class="activity-tab" type="button" data-tab="admin">Admin</button>
+        <button class="activity-tab" type="button" data-tab="master">Master</button>
+      </div>
       <div class="topbar-actions">
+        <div class="date-nav" aria-label="Activity log date">
+          <button class="date-step" id="previousDateBtn" type="button" aria-label="Previous date">&lsaquo;</button>
+          <span class="date-input-wrap">
+            <input class="date-input" id="dateInput" type="date" aria-label="Filter by date">
+          </span>
+          <button class="date-step" id="nextDateBtn" type="button" aria-label="Next date">&rsaquo;</button>
+        </div>
         <button class="btn ghost" id="refreshBtn" type="button">Refresh</button>
         <button class="btn ghost" id="signoutBtn" type="button">Sign out</button>
       </div>
@@ -140,6 +163,9 @@ const appShell = document.getElementById('appShell');
 const userEmail = document.getElementById('userEmail');
 const searchInput = document.getElementById('searchInput');
 const dateInput = document.getElementById('dateInput');
+const previousDateBtn = document.getElementById('previousDateBtn');
+const nextDateBtn = document.getElementById('nextDateBtn');
+const activityTabs = document.getElementById('activityTabs');
 const clearBtn = document.getElementById('clearBtn');
 const refreshBtn = document.getElementById('refreshBtn');
 const signoutBtn = document.getElementById('signoutBtn');
@@ -149,7 +175,8 @@ const logList = document.getElementById('logList');
 let unsubscribeLogs = null;
 let logs = [];
 let searchTerm = '';
-let selectedDate = '';
+let selectedDate = dateInputValue(new Date());
+let selectedActivityTab = 'all';
 
 function escapeHtml(value){
   return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
@@ -183,6 +210,31 @@ function dateKey(value){
   return `${year}-${month}-${day}`;
 }
 
+function dateInputValue(date){
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function dateFromInputValue(value){
+  const parts = String(value || '').split('-').map(Number);
+  if (parts.length !== 3 || parts.some(part => !Number.isFinite(part))) return new Date();
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+function syncDateInput(){
+  dateInput.value = selectedDate;
+}
+
+function moveSelectedDate(days){
+  const date = dateFromInputValue(selectedDate);
+  date.setDate(date.getDate() + days);
+  selectedDate = dateInputValue(date);
+  syncDateInput();
+  render();
+}
+
 function chip(label, value, tone = ''){
   const text = String(value || '').trim();
   if (!text) return '';
@@ -205,10 +257,22 @@ function logHaystack(log){
   ].filter(Boolean).join(' ').toLowerCase();
 }
 
+function logMatchesActivityTab(log){
+  if (selectedActivityTab === 'all') return true;
+  const action = String(log.action || '').toLowerCase();
+  const page = String(log.page || '').toLowerCase();
+  if (selectedActivityTab === 'users') return page === 'user' || action.includes('signed_in') || action.includes('signed_out');
+  if (selectedActivityTab === 'notes') return /note|draft|add_on|addon|discharge|copied|printed|saved|deleted|template/.test(action);
+  if (selectedActivityTab === 'admin') return page === 'index' || action.startsWith('admin') || action.includes('emr') || action.includes('ip_');
+  if (selectedActivityTab === 'master') return page === 'master-admin' || page === 'master' || action.includes('master') || action.includes('mapped') || action.includes('group');
+  return true;
+}
+
 function filteredLogs(){
   const term = searchTerm.trim().toLowerCase();
   return logs.filter(log => {
     if (selectedDate && dateKey(log.createdAt) !== selectedDate) return false;
+    if (!logMatchesActivityTab(log)) return false;
     if (term && !logHaystack(log).includes(term)) return false;
     return true;
   });
@@ -292,6 +356,7 @@ onAuthStateChanged(auth, user => {
   loginScreen.classList.add('hidden');
   appShell.classList.add('authenticated');
   userEmail.textContent = user.email || '';
+  syncDateInput();
   subscribeLogs();
 });
 
@@ -300,18 +365,31 @@ searchInput.addEventListener('input', () => {
   render();
 });
 dateInput.addEventListener('input', () => {
-  selectedDate = dateInput.value || '';
+  selectedDate = dateInput.value || dateInputValue(new Date());
+  syncDateInput();
+  render();
+});
+previousDateBtn.addEventListener('click', () => moveSelectedDate(-1));
+nextDateBtn.addEventListener('click', () => moveSelectedDate(1));
+activityTabs.addEventListener('click', event => {
+  const button = event.target.closest('[data-tab]');
+  if (!button) return;
+  selectedActivityTab = button.dataset.tab || 'all';
+  activityTabs.querySelectorAll('.activity-tab').forEach(tab => tab.classList.toggle('active', tab === button));
   render();
 });
 clearBtn.addEventListener('click', () => {
   searchInput.value = '';
-  dateInput.value = '';
   searchTerm = '';
-  selectedDate = '';
+  selectedActivityTab = 'all';
+  activityTabs.querySelectorAll('.activity-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.tab === 'all'));
+  selectedDate = dateInputValue(new Date());
+  syncDateInput();
   render();
 });
 refreshBtn.addEventListener('click', subscribeLogs);
 signoutBtn.addEventListener('click', () => signOut(auth));
+syncDateInput();
 </script>
 </body>
 </html>
