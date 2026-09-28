@@ -148,6 +148,7 @@
   .gemini-action{ width:170px; }
   .gemini-patient{ width:160px; }
   .gemini-uhid{ width:115px; }
+  .gemini-type{ width:100px; }
   .gemini-duration{ width:95px; }
   .gemini-model{ width:145px; }
   .gemini-attempt{ width:80px; }
@@ -171,6 +172,7 @@
     .event-row::before{ left:111px; }
     .event-badge{ grid-column:3; justify-self:start; }
     .gemini-table{ min-width:980px; }
+    .activity-table{ min-width:1080px; }
   }
 </style>
 </head>
@@ -617,27 +619,42 @@ function renderTimeline(visible){
   logList.innerHTML = Array.from(groups.entries()).map(([hour, group]) => `
     <section class="hour-group">
       <div class="hour-label">${escapeHtml(hour)} - ${group.length} ${group.length === 1 ? 'event' : 'events'}</div>
-      ${group.map(log => {
-        const category = selectedActivityTab === 'gemini' && isGeminiApiLog(log) ? 'gemini' : categoryForLog(log);
-        const date = logDate(log);
-        const user = logActor(log);
-        const detail = logActorDetail(log);
-        return `
-          <article class="event-row">
-            <div class="event-time">${escapeHtml(timeText(date))}</div>
-            <div class="node"></div>
-            <div class="event-copy">
-              <div class="event-avatar">${escapeHtml(initials(user))}</div>
-              <div class="event-main">
-                <strong>${escapeHtml(sameActionText(log))}</strong>
-                <span> to ${escapeHtml(actionTarget(log))}</span>
-                <div class="event-meta">${escapeHtml(detail)}${log.uhid ? ` / UHID: ${escapeHtml(log.uhid)}` : ''}${escapeHtml(technicalLogMeta(log))}</div>
-              </div>
-            </div>
-            <div class="event-badge ${category}">${escapeHtml(category)}</div>
-          </article>
-        `;
-      }).join('')}
+      <div class="gemini-table-wrap">
+        <table class="gemini-table activity-table">
+          <thead>
+            <tr>
+              <th class="gemini-time">Time</th>
+              <th class="gemini-user">User</th>
+              <th class="gemini-action">Action</th>
+              <th class="gemini-patient">Patient</th>
+              <th class="gemini-uhid">UHID</th>
+              <th class="gemini-type">Type</th>
+              <th class="gemini-doctor">Doctor</th>
+              <th class="gemini-page">Page</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${group.map(log => {
+              const category = selectedActivityTab === 'gemini' && isGeminiApiLog(log) ? 'gemini' : categoryForLog(log);
+              const date = logDate(log);
+              const user = logActor(log);
+              const detail = logActorDetail(log);
+              return `
+                <tr>
+                  <td class="gemini-time">${escapeHtml(timeText(date))}</td>
+                  <td class="gemini-user" title="${escapeHtml(detail)}">${escapeHtml(user.replace(/@.*/, '') || user)}</td>
+                  <td class="gemini-action" title="${escapeHtml(sameActionText(log))}">${escapeHtml(sameActionText(log))}</td>
+                  <td class="gemini-patient" title="${escapeHtml(actionTarget(log))}">${escapeHtml(actionTarget(log))}</td>
+                  <td class="gemini-uhid" title="${escapeHtml(log.uhid || '')}">${escapeHtml(geminiValue(log.uhid))}</td>
+                  <td class="gemini-type"><span class="event-badge ${category}">${escapeHtml(category)}</span></td>
+                  <td class="gemini-doctor" title="${escapeHtml(logDoctorCredential(log))}">${escapeHtml(logDoctorCredential(log))}</td>
+                  <td class="gemini-page">${escapeHtml(geminiValue(log.page))}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
     </section>
   `).join('');
 }
