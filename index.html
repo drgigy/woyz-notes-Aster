@@ -410,7 +410,7 @@ function compactNoteText(text){
 
 const NOTE_SECTION_LOOKAHEAD = '(?:Patient Name|Age|UHID|Sex|Chief complaints|Allergies|History|Previous treatment|Examination|Nutritional status|Plan of care|Provisional diagnosis|Final diagnosis|Presenting Complaint|History of Present Illness|Past Medical or Surgical History|Family History|Personal History|Examination Findings|Review of Investigations|Current Medications|Diagnosis|Treatment Plan|Advice|Instructions?|Follow[- ]?up|Prescription|Review Note(?:\\s*\\([^)]*\\))?)';
 const DISCHARGE_SUMMARY_HEADINGS = [
-  'Name','Age/Gender','UHID','IP No.','IP No','Address','Consultant','DOA','DOD',
+  'Patient Name','Discharge Summary Name','Name','Age/Gender','Age','UHID','UHCID','Sex','Gender','IP No.','IP No','Address','Consultant','DOA','DOD',
   'DIAGNOSIS','PROCEDURE DONE','DRUG ALLERGY','HISTORY','CLINICAL EXAMINATION',
   'INVESTIGATIONS','LAB','RADIOLOGY','PROCEDURE / OPERATION NOTES','PROCEDURE/OPERATION NOTES',
   'OTHERS','GENERAL INSTRUCTIONS','REASON FOR ADMISSION','COURSE IN HOSPITAL',
@@ -423,7 +423,7 @@ const DISCHARGE_INLINE_LABELS = [
   'Head','Face','Eyes','Oral Cavity','Oral cavity','Ear','Nose','Chest','Abdomen',
   'Musculoskeletal System','Right upper limb','Right lower limb','Local examination'
 ];
-const DISCHARGE_DEMOGRAPHIC_LABELS = ['Name','Age/Gender','UHID','IP No.','Address','Consultant','DOA','DOD'];
+const DISCHARGE_DEMOGRAPHIC_LABELS = ['Patient Name','Age','UHID','Sex'];
 const DISCHARGE_COPY_HEADINGS = [
   'DIAGNOSIS','PROCEDURE DONE','DRUG ALLERGY','HISTORY','CLINICAL EXAMINATION',
   'INVESTIGATIONS','LAB','RADIOLOGY','PROCEDURE / OPERATION NOTES','OTHERS',
@@ -447,8 +447,8 @@ function formatDischargeSummaryText(text){
   if (!normalized) return '';
   normalized = normalized
     .replace(/(^|\n)\s*Discharge Summary(?:\s*[-–—]\s*[^\n]*)?\s*(?=\n|$)/gi, '\n')
-    .replace(/^Discharge Summary\s+(?=Name\s*:)/i, '')
-    .replace(/(^|\s+)Discharge Summary\s+(?=(?:Name|Age\/Gender|UHID|IP No\.?|Address|Consultant|DOA|DOD|DIAGNOSIS)\s*:)/gi, '\n\n');
+    .replace(/^Discharge Summary\s+(?=(?:Patient Name|Name)\s*:)/i, '')
+    .replace(/(^|\s+)Discharge Summary\s+(?=(?:Patient Name|Discharge Summary Name|Name|Age\/Gender|Age|UHID|UHCID|Sex|Gender|IP No\.?|Address|Consultant|DOA|DOD|DIAGNOSIS)\s*:)/gi, '\n\n');
   const headingTokens = [];
   DISCHARGE_SUMMARY_HEADINGS
     .sort((a,b) => b.length - a.length)
@@ -558,14 +558,43 @@ function compactDischargeDemographicHeader(text){
   const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
   const values = new Map();
   const consumed = new Set();
-  const demoPattern = /^(Name|Age\/Gender|UHID|IP No\.?|Address|Consultant|DOA|DOD):\s*(.*)$/i;
+  const demoPattern = /^(Patient Name|Discharge Summary Name|Name|Age\/Gender|Age|UHID|UHCID|Sex|Gender|IP No\.?|Address|Consultant|DOA|DOD):\s*(.*)$/i;
   const sectionPattern = /^(?:DIAGNOSIS|PROCEDURE DONE|DRUG ALLERGY|HISTORY|CLINICAL EXAMINATION|INVESTIGATIONS|LAB|RADIOLOGY|PROCEDURE\s*\/\s*OPERATION NOTES|OTHERS|GENERAL INSTRUCTIONS|REASON FOR ADMISSION|COURSE IN HOSPITAL|MEDICATIONS ADMINISTERED|CONDITION AT DISCHARGE|ADVICE ON DISCHARGE|MEDICATIONS|HOME MEDICATIONS|DIET ADVICE|FOLLOW UP DATE|REVIEW|WHEN TO OBTAIN URGENT CARE):/i;
-  const canonicalLabel = label => /^ip no\.?$/i.test(label) ? 'IP No.' : label.replace(/^doa$/i, 'DOA').replace(/^dod$/i, 'DOD');
+  const setValue = (label, rawValue) => {
+    const value = String(rawValue || '').trim() || 'NIL';
+    const normalized = String(label || '').trim().toLowerCase();
+    const setIfUseful = (key, nextValue) => {
+      const cleaned = String(nextValue || '').trim();
+      if (!cleaned) return;
+      if (!values.has(key) || isNilLike(values.get(key))) values.set(key, cleaned);
+    };
+    if (normalized === 'patient name' || normalized === 'discharge summary name' || normalized === 'name'){
+      setIfUseful('Patient Name', value);
+      return;
+    }
+    if (normalized === 'age/gender'){
+      const parts = value.split('/').map(item => item.trim()).filter(Boolean);
+      setIfUseful('Age', parts[0] || value);
+      if (parts[1]) setIfUseful('Sex', parts[1]);
+      return;
+    }
+    if (normalized === 'age'){
+      setIfUseful('Age', value);
+      return;
+    }
+    if (normalized === 'uhid' || normalized === 'uhcid'){
+      setIfUseful('UHID', value);
+      return;
+    }
+    if (normalized === 'sex' || normalized === 'gender'){
+      setIfUseful('Sex', value);
+    }
+  };
   for (let index = 0; index < lines.length; index += 1){
     if (sectionPattern.test(lines[index].trim())) break;
     const match = lines[index].trim().match(demoPattern);
     if (!match) continue;
-    const label = canonicalLabel(match[1].trim());
+    const label = match[1].trim();
     let value = match[2].trim();
     consumed.add(index);
     let cursor = index + 1;
@@ -575,16 +604,17 @@ function compactDischargeDemographicHeader(text){
       if (candidate) value = candidate;
       cursor += 1;
     }
-    values.set(label, value || 'NIL');
+    setValue(label, value);
   }
   if (!DISCHARGE_DEMOGRAPHIC_LABELS.some(label => values.has(label))) return text;
   const keepLines = lines.filter((line, index) => !consumed.has(index));
   while (keepLines.length && !keepLines[0].trim()) keepLines.shift();
   const valueFor = label => values.get(label) || 'NIL';
   const header = [
-    `Name: ${valueFor('Name')}    Age/Gender: ${valueFor('Age/Gender')}    UHID: ${valueFor('UHID')}    IP No.: ${valueFor('IP No.')}`,
-    `Address: ${valueFor('Address')}`,
-    `Consultant: ${valueFor('Consultant')}    DOA: ${valueFor('DOA')}    DOD: ${valueFor('DOD')}`
+    `Patient Name: ${valueFor('Patient Name')}`,
+    `Age: ${valueFor('Age')}`,
+    `UHID: ${valueFor('UHID')}`,
+    `Sex: ${valueFor('Sex')}`
   ].join('\n');
   return `${header}\n\n${keepLines.join('\n')}`.trim();
 }
@@ -793,7 +823,7 @@ function canonicalDischargeCopyHeading(label){
 }
 
 function isDischargeDemographicLine(line){
-  return /^(Name|Age\/Gender|UHID|IP No\.?|Address|Consultant|DOA|DOD)\s*:/i.test(String(line || '').trim());
+  return /^(Patient Name|Discharge Summary Name|Name|Age\/Gender|Age|UHID|UHCID|Sex|Gender|IP No\.?|Address|Consultant|DOA|DOD)\s*:/i.test(String(line || '').trim());
 }
 
 function dischargeCopySections(text){
