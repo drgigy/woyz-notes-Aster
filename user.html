@@ -7161,7 +7161,7 @@ function renderContinuationDock(){
   const activeDraft = records.find(record => recordMatchesOwnerAndId(record, continuationState.targetOwnerUid, continuationState.targetId));
   const selectedMode = activeDraft?.selectedMode || '';
   const hasSavedAudio = Boolean(continuationState.audioBlob);
-  const isWaitingForDraft = continuationState.mode === 'new' && !activeDraft?.voiceDraft;
+  const isWaitingForDraft = continuationState.mode === 'new' && !continuationState.targetId;
   continuationLevel.innerHTML = Array.from({length:28}, () => '<span></span>').join('');
   continuationTitle.textContent = continuationState.mode === 'new'
     ? 'Voice note draft'
