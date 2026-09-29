@@ -4755,7 +4755,7 @@ function subscribeToSelectedDate({allowLatestDateFallback = false} = {}){
   const ownerRecords = new Map();
   let receivedOwners = 0;
   const applyRecords = async () => {
-    captureActiveEditorState();
+    if (!pendingNewVoiceDockId) captureActiveEditorState();
     const previousId = activeIndex !== null ? `${noteOwnerUid(records[activeIndex])}:${records[activeIndex]?.firestoreId}` : null;
     records = Array.from(ownerRecords.values()).flat().map(applyLocalDirtyRecord).filter(note => noteMatchesSelectedScope(note, selectedDate)).sort((a,b) => {
       const aTime = a.createdAtValue?.toMillis?.() || 0;
@@ -4872,6 +4872,10 @@ function subscribeToAllRecords(){
       deleteEmptyAbandonedVoiceDrafts(ownerNotes);
       allOwnerRecords.set(ownerUid, ownerNotes.filter(note => !noteExpired(note) && !isEmptyAbandonedVoiceDraft(note)).map(applyLocalDirtyRecord));
       allRecords = Array.from(allOwnerRecords.values()).flat();
+      if (pendingNewVoiceDockId){
+        renderEntries();
+        return;
+      }
       if (searchScope === 'all'){
         renderEntries();
         if (selectedTimelineKey) renderPatientTimeline(selectedTimelineKey);
