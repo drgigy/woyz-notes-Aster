@@ -3576,8 +3576,8 @@ function normalizePatientToken(value){
 
 function sortRecordsNewestFirst(items){
   return [...items].sort((a,b) => {
-    const aTime = a.createdAtValue?.toMillis?.() || 0;
-    const bTime = b.createdAtValue?.toMillis?.() || 0;
+    const aTime = recordSortTime(a);
+    const bTime = recordSortTime(b);
     if (bTime !== aTime) return bTime - aTime;
     return String(b.visitDate || '').localeCompare(String(a.visitDate || ''));
   });
@@ -3683,7 +3683,11 @@ function selectedIpTimelineDateGroup(){
 }
 
 function recordSortTime(record){
-  return record?.createdAtValue?.toMillis?.() || dateValueFromRecord(record) || 0;
+  return timestampMillis(record?.updatedAtValue)
+    || timestampMillis(record?.userSavedAtValue)
+    || timestampMillis(record?.createdAtValue)
+    || dateValueFromRecord(record)
+    || 0;
 }
 
 function dateValueFromRecord(record){
@@ -3817,8 +3821,8 @@ function groupedPatientSearchResults(){
     group.latest = group.records[0];
     return group;
   }).sort((a,b) => {
-    const aTime = a.latest?.createdAtValue?.toMillis?.() || 0;
-    const bTime = b.latest?.createdAtValue?.toMillis?.() || 0;
+    const aTime = recordSortTime(a.latest);
+    const bTime = recordSortTime(b.latest);
     return bTime - aTime;
   });
 }
@@ -4594,6 +4598,8 @@ function noteFromSnapshot(snapshot, ownerUid = currentUser?.uid){
     ownerUid,
     ownerLabel:ownerDisplayName(ownerUid),
     createdAtValue:data.createdAt,
+    userSavedAtValue:data.userSavedAt || null,
+    updatedAtValue:data.updatedAt || null,
     expiresAtValue:data.expiresAt || null,
     name:data.patientData?.name || 'Visit Note draft',
     uhid:data.patientData?.uhid || 'NIL',
@@ -4765,11 +4771,7 @@ function subscribeToSelectedDate({allowLatestDateFallback = false} = {}){
     const activeNewDraftId = activeNewVoiceDraftId();
     if (!activeNewDraftId) captureActiveEditorState();
     const previousId = activeIndex !== null ? `${noteOwnerUid(records[activeIndex])}:${records[activeIndex]?.firestoreId}` : null;
-    records = Array.from(ownerRecords.values()).flat().map(applyLocalDirtyRecord).filter(note => noteMatchesSelectedScope(note, selectedDate)).sort((a,b) => {
-      const aTime = a.createdAtValue?.toMillis?.() || 0;
-      const bTime = b.createdAtValue?.toMillis?.() || 0;
-      return bTime - aTime;
-    });
+    records = sortRecordsNewestFirst(Array.from(ownerRecords.values()).flat().map(applyLocalDirtyRecord).filter(note => noteMatchesSelectedScope(note, selectedDate)));
     const pendingVoiceDraftSynced = Boolean(
       activeNewDraftId &&
       records.some(record => recordMatchesOwnerAndId(record, continuationState.targetOwnerUid, activeNewDraftId))
