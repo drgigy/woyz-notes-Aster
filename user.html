@@ -7492,10 +7492,25 @@ async function stopAndAppendContinuation(){
 }
 
 async function finishNewVoiceDraft(audioBlob, apiKey, onRetry){
-  const targetIndex = records.findIndex(record => recordMatchesOwnerAndId(record, continuationState.targetOwnerUid, continuationState.targetId));
-  if (targetIndex < 0) return;
+  const targetId = continuationState.targetId;
+  const targetOwnerUid = continuationState.targetOwnerUid;
+  let targetIndex = records.findIndex(record => recordMatchesOwnerAndId(record, targetOwnerUid, targetId));
+  let draft = targetIndex >= 0 ? records[targetIndex] : null;
+  if (!draft && targetId && targetOwnerUid){
+    const draftSnapshot = await getDoc(doc(db,'users',targetOwnerUid,'notes',targetId));
+    if (draftSnapshot.exists()){
+      draft = noteFromSnapshot(draftSnapshot, targetOwnerUid);
+      records = [
+        draft,
+        ...records.filter(record => !recordMatchesOwnerAndId(record, targetOwnerUid, targetId))
+      ];
+      targetIndex = 0;
+    }
+  }
+  if (!draft){
+    throw new Error('Voice draft is not available for transcription.');
+  }
   activeIndex = targetIndex;
-  const draft = records[targetIndex];
   setContinuationStatus('Creating your note...');
   const generated = await sendAudioToGemini(audioBlob, apiKey, draft.selectedMode, onRetry || (message => setContinuationStatus(message)), draft.visitType || selectedVisitType, draft.patientData);
   const generationLogMetadata = recordingLogMetadata(generated);
