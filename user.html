@@ -3414,6 +3414,13 @@ function newVoiceDraftViewActive(){
   );
 }
 
+function activeNewVoiceDraftId(){
+  if (pendingNewVoiceDockId) return pendingNewVoiceDockId;
+  if (continuationState.open && continuationState.mode === 'new' && continuationState.targetId) return continuationState.targetId;
+  const activeRecord = activeIndex !== null ? records[activeIndex] : null;
+  return activeRecord?.voiceDraft ? activeRecord.firestoreId : null;
+}
+
 function updateVoiceDraftLockUi(){
   const locked = voiceDraftInteractionLocked();
   appShell.classList.toggle('voice-draft-locked', locked);
@@ -4755,7 +4762,8 @@ function subscribeToSelectedDate({allowLatestDateFallback = false} = {}){
   const ownerRecords = new Map();
   let receivedOwners = 0;
   const applyRecords = async () => {
-    if (!pendingNewVoiceDockId) captureActiveEditorState();
+    const activeNewDraftId = activeNewVoiceDraftId();
+    if (!activeNewDraftId) captureActiveEditorState();
     const previousId = activeIndex !== null ? `${noteOwnerUid(records[activeIndex])}:${records[activeIndex]?.firestoreId}` : null;
     records = Array.from(ownerRecords.values()).flat().map(applyLocalDirtyRecord).filter(note => noteMatchesSelectedScope(note, selectedDate)).sort((a,b) => {
       const aTime = a.createdAtValue?.toMillis?.() || 0;
@@ -4763,41 +4771,41 @@ function subscribeToSelectedDate({allowLatestDateFallback = false} = {}){
       return bTime - aTime;
     });
     const pendingVoiceDraftSynced = Boolean(
-      pendingNewVoiceDockId &&
-      records.some(record => recordMatchesOwnerAndId(record, continuationState.targetOwnerUid, pendingNewVoiceDockId))
+      activeNewDraftId &&
+      records.some(record => recordMatchesOwnerAndId(record, continuationState.targetOwnerUid, activeNewDraftId))
     );
     if (
-      pendingNewVoiceDockId &&
+      activeNewDraftId &&
       continuationState.draftRecord &&
-      recordMatchesOwnerAndId(continuationState.draftRecord, continuationState.targetOwnerUid, pendingNewVoiceDockId) &&
+      recordMatchesOwnerAndId(continuationState.draftRecord, continuationState.targetOwnerUid, activeNewDraftId) &&
       noteMatchesSelectedScope(continuationState.draftRecord, selectedDate) &&
       !pendingVoiceDraftSynced
     ){
       records = [applyLocalDirtyRecord({...continuationState.draftRecord}), ...records];
     }
     renderEntries();
-    if (homeModeActive && !pendingSelectId && !pendingNewVoiceDockId){
+    if (homeModeActive && !pendingSelectId && !activeNewDraftId){
       showHomeScreen({clearPendingPatientData:false});
       return;
     }
     if (searchScope === 'all') return;
-    if (pendingNewVoiceDockId){
+    if (activeNewDraftId){
       clearTimelineSelection();
     }else if (selectedVisitType === 'OP' && selectedOpTimelineKey){
       renderOpPatientTimeline(selectedOpTimelineKey, selectedOpTimelineEntryId);
       return;
     }
-    const targetId = pendingSelectId || previousId;
+    const targetId = pendingSelectId || activeNewDraftId || previousId;
     const targetIndex = targetId ? records.findIndex(record => `${noteOwnerUid(record)}:${record.firestoreId}` === targetId || record.firestoreId === targetId) : -1;
-    if (targetIndex < 0 && pendingNewVoiceDockId){
+    if (targetIndex < 0 && activeNewDraftId){
       return;
     }
     pendingSelectId = null;
     if (targetIndex >= 0){
-      if (pendingNewVoiceDockId && records[targetIndex]?.firestoreId === pendingNewVoiceDockId){
+      if (activeNewDraftId && records[targetIndex]?.firestoreId === activeNewDraftId){
         clearTimelineSelection();
         selectEntry(targetIndex,{preserveDirtyEditor:false});
-        if (pendingVoiceDraftSynced) pendingNewVoiceDockId = null;
+        if (pendingVoiceDraftSynced && pendingNewVoiceDockId === activeNewDraftId) pendingNewVoiceDockId = null;
         if (!continuationState.open || continuationState.targetId !== records[targetIndex]?.firestoreId){
           openNewVoiceDock();
         }
@@ -4872,7 +4880,7 @@ function subscribeToAllRecords(){
       deleteEmptyAbandonedVoiceDrafts(ownerNotes);
       allOwnerRecords.set(ownerUid, ownerNotes.filter(note => !noteExpired(note) && !isEmptyAbandonedVoiceDraft(note)).map(applyLocalDirtyRecord));
       allRecords = Array.from(allOwnerRecords.values()).flat();
-      if (pendingNewVoiceDockId){
+      if (activeNewVoiceDraftId()){
         renderEntries();
         return;
       }
