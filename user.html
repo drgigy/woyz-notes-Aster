@@ -4762,12 +4762,16 @@ function subscribeToSelectedDate({allowLatestDateFallback = false} = {}){
       const bTime = b.createdAtValue?.toMillis?.() || 0;
       return bTime - aTime;
     });
+    const pendingVoiceDraftSynced = Boolean(
+      pendingNewVoiceDockId &&
+      records.some(record => recordMatchesOwnerAndId(record, continuationState.targetOwnerUid, pendingNewVoiceDockId))
+    );
     if (
       pendingNewVoiceDockId &&
       continuationState.draftRecord &&
       recordMatchesOwnerAndId(continuationState.draftRecord, continuationState.targetOwnerUid, pendingNewVoiceDockId) &&
       noteMatchesSelectedScope(continuationState.draftRecord, selectedDate) &&
-      !records.some(record => recordMatchesOwnerAndId(record, continuationState.targetOwnerUid, pendingNewVoiceDockId))
+      !pendingVoiceDraftSynced
     ){
       records = [applyLocalDirtyRecord({...continuationState.draftRecord}), ...records];
     }
@@ -4793,8 +4797,10 @@ function subscribeToSelectedDate({allowLatestDateFallback = false} = {}){
       if (selectedVisitType === 'OP' && openOpTimelineForRecord(records[targetIndex])) return;
       selectEntry(targetIndex,{preserveDirtyEditor:true});
       if (pendingNewVoiceDockId && records[activeIndex]?.firestoreId === pendingNewVoiceDockId){
-        pendingNewVoiceDockId = null;
-        openNewVoiceDock();
+        if (pendingVoiceDraftSynced) pendingNewVoiceDockId = null;
+        if (!continuationState.open || continuationState.targetId !== records[activeIndex]?.firestoreId){
+          openNewVoiceDock();
+        }
       }
     }
     else if (records.length){
@@ -7581,6 +7587,8 @@ async function finishNewVoiceDraft(audioBlob, apiKey, onRetry){
   draft.everSaved = true;
   draft.isDraft = false;
   draft.status = 'Note ready';
+  pendingNewVoiceDockId = null;
+  pendingSelectId = null;
   markRecordDirty(draft,{generated:true,saved:true});
   const draftVisitType = 'OP';
   const selectedDateString = dateInputValue(selectedVisitDate);
