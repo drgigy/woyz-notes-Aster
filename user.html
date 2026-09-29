@@ -4794,14 +4794,17 @@ function subscribeToSelectedDate({allowLatestDateFallback = false} = {}){
     }
     pendingSelectId = null;
     if (targetIndex >= 0){
-      if (selectedVisitType === 'OP' && openOpTimelineForRecord(records[targetIndex])) return;
-      selectEntry(targetIndex,{preserveDirtyEditor:true});
-      if (pendingNewVoiceDockId && records[activeIndex]?.firestoreId === pendingNewVoiceDockId){
+      if (pendingNewVoiceDockId && records[targetIndex]?.firestoreId === pendingNewVoiceDockId){
+        clearTimelineSelection();
+        selectEntry(targetIndex,{preserveDirtyEditor:false});
         if (pendingVoiceDraftSynced) pendingNewVoiceDockId = null;
-        if (!continuationState.open || continuationState.targetId !== records[activeIndex]?.firestoreId){
+        if (!continuationState.open || continuationState.targetId !== records[targetIndex]?.firestoreId){
           openNewVoiceDock();
         }
+        return;
       }
+      if (selectedVisitType === 'OP' && openOpTimelineForRecord(records[targetIndex])) return;
+      selectEntry(targetIndex,{preserveDirtyEditor:true});
     }
     else if (records.length){
       if (openDefaultOpView()) return;
@@ -7368,6 +7371,7 @@ function openNewVoiceDock(){
   continuationState.status = 'Click on the mic button to start recording.';
   remainingSeconds = 300;
   placeDock('right');
+  renderVoiceDraftTemplate(record);
   renderContinuationDock();
 }
 
