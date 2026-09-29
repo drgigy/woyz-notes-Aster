@@ -3222,6 +3222,7 @@ let emailCloseTimer = null;
 let timelineCloseTimer = null;
 let pendingEmailMode = 'visit';
 let anonymizeEnabled = localStorage.getItem(ANONYMIZE_STORAGE) === 'true';
+const resolvedPromise = Promise.resolve();
 let continuationState = {
   open:false,
   mode:'continue',
@@ -3233,6 +3234,7 @@ let continuationState = {
   hasStarted:false,
   audioBlob:null,
   draftRecord:null,
+  draftSavePromise:resolvedPromise,
   status:'Ready',
   documentMode:null,
   position:null
@@ -5068,7 +5070,12 @@ function showHomeScreen(){
       homeScanInput?.select();
     }, 0);
   };
-  mainScroll.querySelector('#homeAddNewBtn')?.addEventListener('click', () => flashHomeStatus('Please select a template.'));
+  mainScroll.querySelector('#homeAddNewBtn')?.addEventListener('click', () => {
+    pendingHomePatientData = null;
+    homeScanRow?.classList.remove('visible');
+    if (homeScanInput) homeScanInput.value = '';
+    flashHomeStatus('Please select a template.');
+  });
   mainScroll.querySelector('#homeScanQrBtn')?.addEventListener('click', showHomeScanInput);
   homeScanClearBtn?.addEventListener('click', clearHomeScanText);
   homeScanInput?.addEventListener('input', handleHomeScanText);
@@ -5113,6 +5120,7 @@ function showHomeScreen(){
 
 function goHomeToday(){
   if (voiceDraftInteractionLocked()) return;
+  pendingHomePatientData = null;
   selectedVisitDate = maxAccessibleVisitDate();
   if (searchScope === 'all'){
     searchScope = 'today';
@@ -7246,6 +7254,7 @@ function openContinuationDock(){
   continuationState.hasStarted = false;
   continuationState.audioBlob = null;
   continuationState.draftRecord = null;
+  continuationState.draftSavePromise = resolvedPromise;
   continuationState.documentMode = null;
   continuationState.status = 'Ready to add on to selected note';
   remainingSeconds = 300;
@@ -7269,6 +7278,7 @@ function openDocumentAppendDock(mode){
   continuationState.hasStarted = false;
   continuationState.audioBlob = null;
   continuationState.draftRecord = null;
+  continuationState.draftSavePromise = resolvedPromise;
   continuationState.documentMode = mode;
   continuationState.status = 'Click on the mic button to start recording.';
   remainingSeconds = 300;
@@ -7290,6 +7300,7 @@ function openPreparingNewVoiceDock(mode = null){
   continuationState.hasStarted = false;
   continuationState.audioBlob = null;
   continuationState.draftRecord = null;
+  continuationState.draftSavePromise = resolvedPromise;
   continuationState.documentMode = null;
   continuationState.status = 'Preparing voice note...';
   remainingSeconds = 300;
@@ -7312,6 +7323,7 @@ function openNewVoiceDock(){
   continuationState.hasStarted = false;
   continuationState.audioBlob = null;
   continuationState.draftRecord = {...record};
+  continuationState.draftSavePromise = resolvedPromise;
   continuationState.documentMode = null;
   continuationState.status = 'Click on the mic button to start recording.';
   remainingSeconds = 300;
@@ -7329,6 +7341,7 @@ function closeContinuationDock({releaseMic = true} = {}){
   continuationState.hasStarted = false;
   continuationState.audioBlob = null;
   continuationState.draftRecord = null;
+  continuationState.draftSavePromise = resolvedPromise;
   continuationState.status = 'Ready';
   continuationState.documentMode = null;
   continuationState.targetOwnerUid = null;
@@ -7375,6 +7388,10 @@ async function startContinuationRecording(){
     return;
   }
   try{
+    if (continuationState.mode === 'new'){
+      setContinuationStatus('Preparing voice note...');
+      await continuationState.draftSavePromise;
+    }
     resetRecordingMetadata();
     continuationState.audioBlob = null;
     mediaStream = await navigator.mediaDevices.getUserMedia({audio:true});
@@ -7513,6 +7530,7 @@ async function stopAndAppendContinuation(){
 }
 
 async function finishNewVoiceDraft(audioBlob, apiKey, onRetry){
+  await continuationState.draftSavePromise;
   const targetId = continuationState.targetId;
   const targetOwnerUid = continuationState.targetOwnerUid;
   let targetIndex = records.findIndex(record => recordMatchesOwnerAndId(record, targetOwnerUid, targetId));
@@ -7570,7 +7588,8 @@ async function finishNewVoiceDraft(audioBlob, apiKey, onRetry){
   updateDischargeButton(visibleDraft);
   copyBtn.style.display = 'flex';
   renderGeneratedNote(visibleDraft);
-  persistRecord(draft,{
+  try{
+    await persistRecord(draft,{
     kind:'generated',
     voiceDraft:false,
     isDraft:false,
@@ -7579,20 +7598,22 @@ async function finishNewVoiceDraft(audioBlob, apiKey, onRetry){
     transcription:draft.transcription,
     patientData:draft.patientData,
     selectedMode:draft.selectedMode,
+    visitDate:selectedDateString,
     visitType:draftVisitType,
     ...(draftVisitType === 'IP' ? {admissionDate} : {admissionDate:null}),
     status:'Note ready',
     expiresAt:noteExpiryTimestamp(),
     userSavedAt:serverTimestamp(),
     updatedAt:serverTimestamp()
-  }).then(() => {
+    });
     clearRecordDirty(draft);
     safeLogActivity('voice_note_generated', {...noteLogPayload(draft), ...generationLogMetadata});
-  }).catch(error => {
+  }catch(error){
     console.error('Generated continuation note save failed:', error);
     const visibleDraft = records[activeIndex] || draft;
     visibleDraft.status = 'Note ready. Saving is pending.';
-  });
+    throw error;
+  }
 }
 
 function appendContinuationText(addition){
@@ -9069,13 +9090,14 @@ async function createVoiceDraft(mode = null, options = {}){
       remainingSeconds = 300;
       selectLocalDraftFromSnapshot({id:newDraftRef.id,data:()=>draftData});
       openNewVoiceDock();
-      setDoc(newDraftRef,{...draftData,createdAt:serverTimestamp()},{merge:true}).catch(error => {
+      const draftSavePromise = setDoc(newDraftRef,{...draftData,createdAt:serverTimestamp()},{merge:true}).catch(error => {
         console.error('Voice draft save failed:', error);
         if (continuationState.targetId === newDraftRef.id && continuationState.targetOwnerUid === currentUser.uid){
           continuationState.status = 'Voice note opened, but saving is pending.';
           renderContinuationDock();
         }
       });
+      continuationState.draftSavePromise = draftSavePromise;
       safeLogActivity('voice_draft_created', noteLogPayload({...draftData, firestoreId:newDraftRef.id, ownerUid:currentUser.uid}));
     }catch(error){
       console.error('Voice draft creation failed:', error);
