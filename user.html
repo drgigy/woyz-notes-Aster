@@ -7083,11 +7083,25 @@ async function stopAndTranscribe(){
 
 function stopMediaRecorder(){
   return new Promise((resolve, reject) => {
-    if (!mediaRecorder) return reject(new Error('No recording is available.'));
+    const chunks = audioChunks.filter(chunk => chunk?.size);
+    if (!mediaRecorder){
+      if (chunks.length) return resolve(new Blob(chunks, {type:'audio/webm'}));
+      return reject(new Error('No recording is available.'));
+    }
     const mimeType = mediaRecorder.mimeType || 'audio/webm';
-    mediaRecorder.addEventListener('stop', () => resolve(new Blob(audioChunks, {type:mimeType})), {once:true});
-    if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-    else resolve(new Blob(audioChunks, {type:mimeType}));
+    const finish = () => {
+      const finalChunks = audioChunks.filter(chunk => chunk?.size);
+      if (!finalChunks.length) reject(new Error('Recording is empty. Please try again.'));
+      else resolve(new Blob(finalChunks, {type:mimeType}));
+    };
+    if (mediaRecorder.state === 'inactive') return finish();
+    mediaRecorder.addEventListener('stop', finish, {once:true});
+    try{
+      if (typeof mediaRecorder.requestData === 'function') mediaRecorder.requestData();
+      mediaRecorder.stop();
+    }catch(error){
+      finish();
+    }
   });
 }
 
@@ -7482,8 +7496,9 @@ async function stopAndAppendContinuation(){
     }
     closeContinuationDock({releaseMic:false});
   }catch(error){
+    console.error('Continuation generation failed:', error);
     continuationState.hasStarted = Boolean(continuationState.audioBlob);
-    setContinuationStatus('Note generation paused. The audio is still kept.');
+    setContinuationStatus(`${userSafeNoteServiceMessage(error.message)} The audio is still kept.`);
   }finally{
     continuationState.processing = false;
     stopMediaTracks();
