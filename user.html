@@ -4762,6 +4762,15 @@ function subscribeToSelectedDate({allowLatestDateFallback = false} = {}){
       const bTime = b.createdAtValue?.toMillis?.() || 0;
       return bTime - aTime;
     });
+    if (
+      pendingNewVoiceDockId &&
+      continuationState.draftRecord &&
+      recordMatchesOwnerAndId(continuationState.draftRecord, continuationState.targetOwnerUid, pendingNewVoiceDockId) &&
+      noteMatchesSelectedScope(continuationState.draftRecord, selectedDate) &&
+      !records.some(record => recordMatchesOwnerAndId(record, continuationState.targetOwnerUid, pendingNewVoiceDockId))
+    ){
+      records = [applyLocalDirtyRecord({...continuationState.draftRecord}), ...records];
+    }
     renderEntries();
     if (homeModeActive && !pendingSelectId && !pendingNewVoiceDockId){
       showHomeScreen();
@@ -4776,6 +4785,9 @@ function subscribeToSelectedDate({allowLatestDateFallback = false} = {}){
     }
     const targetId = pendingSelectId || previousId;
     const targetIndex = targetId ? records.findIndex(record => `${noteOwnerUid(record)}:${record.firestoreId}` === targetId || record.firestoreId === targetId) : -1;
+    if (targetIndex < 0 && pendingNewVoiceDockId){
+      return;
+    }
     pendingSelectId = null;
     if (targetIndex >= 0){
       if (selectedVisitType === 'OP' && openOpTimelineForRecord(records[targetIndex])) return;
