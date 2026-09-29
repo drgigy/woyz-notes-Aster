@@ -3403,6 +3403,14 @@ function voiceDraftInteractionLocked(){
   );
 }
 
+function newVoiceDraftViewActive(){
+  return Boolean(
+    pendingNewVoiceDockId ||
+    (continuationState.open && continuationState.mode === 'new') ||
+    records[activeIndex]?.voiceDraft
+  );
+}
+
 function updateVoiceDraftLockUi(){
   const locked = voiceDraftInteractionLocked();
   appShell.classList.toggle('voice-draft-locked', locked);
@@ -4903,6 +4911,7 @@ function subscribeToGroups(){
 }
 
 function showEmptyDate(message = 'No notes saved for this date.'){
+  if (newVoiceDraftViewActive()) return;
   activeIndex = null;
   homeModeActive = false;
   setMobileBottomActionsVisible(false);
@@ -4923,6 +4932,7 @@ function showEmptyDate(message = 'No notes saved for this date.'){
 }
 
 function showHomeScreen(){
+  if (newVoiceDraftViewActive()) return;
   if (voiceDraftInteractionLocked()) return;
   homeModeActive = true;
   activeIndex = null;
