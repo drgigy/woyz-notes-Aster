@@ -3232,6 +3232,7 @@ let continuationState = {
   processing:false,
   hasStarted:false,
   audioBlob:null,
+  draftRecord:null,
   status:'Ready',
   documentMode:null,
   position:null
@@ -7244,6 +7245,7 @@ function openContinuationDock(){
   continuationState.processing = false;
   continuationState.hasStarted = false;
   continuationState.audioBlob = null;
+  continuationState.draftRecord = null;
   continuationState.documentMode = null;
   continuationState.status = 'Ready to add on to selected note';
   remainingSeconds = 300;
@@ -7266,6 +7268,7 @@ function openDocumentAppendDock(mode){
   continuationState.processing = false;
   continuationState.hasStarted = false;
   continuationState.audioBlob = null;
+  continuationState.draftRecord = null;
   continuationState.documentMode = mode;
   continuationState.status = 'Click on the mic button to start recording.';
   remainingSeconds = 300;
@@ -7286,6 +7289,7 @@ function openPreparingNewVoiceDock(mode = null){
   continuationState.processing = true;
   continuationState.hasStarted = false;
   continuationState.audioBlob = null;
+  continuationState.draftRecord = null;
   continuationState.documentMode = null;
   continuationState.status = 'Preparing voice note...';
   remainingSeconds = 300;
@@ -7307,6 +7311,7 @@ function openNewVoiceDock(){
   continuationState.processing = false;
   continuationState.hasStarted = false;
   continuationState.audioBlob = null;
+  continuationState.draftRecord = {...record};
   continuationState.documentMode = null;
   continuationState.status = 'Click on the mic button to start recording.';
   remainingSeconds = 300;
@@ -7323,6 +7328,7 @@ function closeContinuationDock({releaseMic = true} = {}){
   continuationState.processing = false;
   continuationState.hasStarted = false;
   continuationState.audioBlob = null;
+  continuationState.draftRecord = null;
   continuationState.status = 'Ready';
   continuationState.documentMode = null;
   continuationState.targetOwnerUid = null;
@@ -7511,6 +7517,14 @@ async function finishNewVoiceDraft(audioBlob, apiKey, onRetry){
   const targetOwnerUid = continuationState.targetOwnerUid;
   let targetIndex = records.findIndex(record => recordMatchesOwnerAndId(record, targetOwnerUid, targetId));
   let draft = targetIndex >= 0 ? records[targetIndex] : null;
+  if (!draft && continuationState.draftRecord && recordMatchesOwnerAndId(continuationState.draftRecord, targetOwnerUid, targetId)){
+    draft = {...continuationState.draftRecord};
+    records = [
+      draft,
+      ...records.filter(record => !recordMatchesOwnerAndId(record, targetOwnerUid, targetId))
+    ];
+    targetIndex = 0;
+  }
   if (!draft && targetId && targetOwnerUid){
     const draftSnapshot = await getDoc(doc(db,'users',targetOwnerUid,'notes',targetId));
     if (draftSnapshot.exists()){
@@ -9048,6 +9062,9 @@ async function createVoiceDraft(mode = null, options = {}){
 	      };
       pendingSelectId = newDraftRef.id;
       pendingNewVoiceDockId = newDraftRef.id;
+      continuationState.targetId = newDraftRef.id;
+      continuationState.targetOwnerUid = currentUser.uid;
+      continuationState.draftRecord = {...draftData, firestoreId:newDraftRef.id, ownerUid:currentUser.uid};
       clearTimelineSelection();
       remainingSeconds = 300;
       selectLocalDraftFromSnapshot({id:newDraftRef.id,data:()=>draftData});
