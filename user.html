@@ -4777,7 +4777,7 @@ function subscribeToSelectedDate({allowLatestDateFallback = false} = {}){
     }
     renderEntries();
     if (homeModeActive && !pendingSelectId && !pendingNewVoiceDockId){
-      showHomeScreen();
+      showHomeScreen({clearPendingPatientData:false});
       return;
     }
     if (searchScope === 'all') return;
@@ -4952,9 +4952,10 @@ function showEmptyDate(message = 'No notes saved for this date.'){
   mainScroll.innerHTML = `<div class="empty-state"><div class="empty-title">No notes</div><div class="empty-sub">${escapeHtml(message)}</div></div>`;
 }
 
-function showHomeScreen(){
+function showHomeScreen({clearPendingPatientData = true} = {}){
   if (newVoiceDraftViewActive()) return;
   if (voiceDraftInteractionLocked()) return;
+  if (clearPendingPatientData) pendingHomePatientData = null;
   homeModeActive = true;
   activeIndex = null;
   setMobileBottomActionsVisible(false);
@@ -5295,7 +5296,7 @@ onAuthStateChanged(auth,user => {
       ownerProfiles[user.uid] = profile;
       prescriptionLayoutState = normalizedPrescriptionLayout(profile.prescriptionLayout);
       if (layoutModal.classList.contains('open')) loadLayoutModal();
-      if (homeModeActive) showHomeScreen();
+      if (homeModeActive) showHomeScreen({clearPendingPatientData:false});
       if (Array.isArray(profile.sharedWith)){
         applySharedOwners([user.uid, ...profile.sharedWith]);
       }
@@ -7046,14 +7047,23 @@ async function stopAndTranscribe(){
       }
     );
     const generationLogMetadata = recordingLogMetadata(generated);
+    const selectedDateString = dateInputValue(selectedVisitDate);
+    const draftVisitType = draft.visitType || selectedVisitType || 'OP';
     draft.transcription = generated.text;
     draft.patientData = generated.patientData;
     draft.audioBlob = null;
     draft.voiceDraft = false;
     draft.kind = 'generated';
-    draft.saved = false;
+    draft.saved = true;
+    draft.everSaved = true;
+    draft.isDraft = false;
     draft.status = 'Note ready';
-    markRecordDirty(draft,{generated:true});
+    draft.visitType = draftVisitType;
+    draft.visitDate = draft.visitDate || selectedDateString;
+    draft.admissionDate = draftVisitType === 'IP' ? (draft.admissionDate || draft.visitDate || selectedDateString) : null;
+    pendingNewVoiceDockId = null;
+    pendingSelectId = null;
+    markRecordDirty(draft,{generated:true,saved:true});
     const liveIndex = records.findIndex(record => recordLocalKey(record) === draftKey);
     if (liveIndex >= 0){
       records[liveIndex] = {
@@ -7061,8 +7071,13 @@ async function stopAndTranscribe(){
         transcription:draft.transcription,
         patientData:draft.patientData,
         voiceDraft:false,
+        isDraft:false,
         kind:'generated',
-        saved:false,
+        saved:true,
+        everSaved:true,
+        visitType:draftVisitType,
+        visitDate:draft.visitDate,
+        admissionDate:draft.admissionDate,
         status:'Note ready',
         transcribing:false
       };
@@ -7074,14 +7089,21 @@ async function stopAndTranscribe(){
     persistRecord(draft,{
       kind:'generated',
       voiceDraft:false,
+      isDraft:false,
+      saved:true,
+      everSaved:true,
       transcription:draft.transcription,
       patientData:draft.patientData,
       selectedMode:draft.selectedMode,
-      visitType:draft.visitType || selectedVisitType,
+      visitDate:draft.visitDate,
+      visitType:draftVisitType,
+      ...(draftVisitType === 'IP' ? {admissionDate:draft.admissionDate} : {admissionDate:null}),
       status:'Note ready',
       expiresAt:noteExpiryTimestamp(),
+      userSavedAt:serverTimestamp(),
       updatedAt:serverTimestamp()
     }).then(() => {
+      clearRecordDirty(draft);
       safeLogActivity('voice_note_generated', {...noteLogPayload(draft), ...generationLogMetadata});
     }).catch(error => {
       console.error('Generated note save failed:', error);
@@ -9062,6 +9084,7 @@ async function createVoiceDraft(mode = null, options = {}){
   if (!canCreateNewEntryForSelectedDate()) return;
   return withDraftCreationLock(async () => {
     homeModeActive = false;
+    clearTimelineSelection();
     const selectedMode = mode || null;
     const requestedVisitType = 'OP';
     const requestedDateString = dateInputValue(selectedVisitDate);
@@ -9106,7 +9129,6 @@ async function createVoiceDraft(mode = null, options = {}){
       continuationState.targetId = newDraftRef.id;
       continuationState.targetOwnerUid = currentUser.uid;
       continuationState.draftRecord = {...draftData, firestoreId:newDraftRef.id, ownerUid:currentUser.uid};
-      clearTimelineSelection();
       remainingSeconds = 300;
       selectLocalDraftFromSnapshot({id:newDraftRef.id,data:()=>draftData});
       openNewVoiceDock();
